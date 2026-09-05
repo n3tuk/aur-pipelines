@@ -16,7 +16,6 @@ tasks:
     deps:
       - task: check:exec:actionlint
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
       - if: find .github/workflows -type f -name '*.yaml' >dev/null 2>&1
         cmd: actionlint -config-file .actionlint.yaml -no-color .github/workflows/*.yaml
-      - cmd: echo -e '\e[0;32mPassed\e[0m'

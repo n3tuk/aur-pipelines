@@ -17,10 +17,9 @@ tasks:
     deps:
       - task: check:exec:goreleaser
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
       - cmd: goreleaser healthcheck
       - cmd: goreleaser check
-      - cmd: echo -e '\e[0;32mPassed\e[0m'
 
   go:dirs:
     desc: Create the required directories for building/testing
@@ -31,9 +30,8 @@ tasks:
     internal: true
     silent: true
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - cmd: mkdir -p bin dist coverage/{unit,integration}
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
     status:
       - test -d bin
       - test -d dist
@@ -52,10 +50,9 @@ tasks:
     deps:
       - task: check:exec:go
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - cmd: go mod download
       - cmd: go mod tidy
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
 
   go:build:
     aliases:
@@ -78,9 +75,8 @@ tasks:
       - task: go:lint
       - task: go:test
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - cmd: goreleaser build --clean --timeout 2m --snapshot --single-target --output bin/{{ .bin }}
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
 
   go:fmt:
     desc: Properly format all the .go files
@@ -94,9 +90,8 @@ tasks:
     deps:
       - task: check:exec:go
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - cmd: go fmt ./...
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
 
   go:lint:
     desc: Check linting via golangci-lint
@@ -112,9 +107,8 @@ tasks:
       - task: go:fmt
       - task: go:modules
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
       - cmd: golangci-lint --config '{{ .ROOT_DIR }}/.golangci.yaml' run
-      - cmd: echo -e '\e[0;32mPassed\e[0m'
 
   go:schema:
     desc: Generate the JSON Schema for the aur-pipelines configuration file
@@ -131,9 +125,8 @@ tasks:
     deps:
       - task: check:exec:go
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - cmd: go run ./tools/schema/main.go
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
 
   go:test:
     desc: Run the unit tests for the application
@@ -147,50 +140,10 @@ tasks:
       - task: go:dirs
       - task: go:lint
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
       - cmd: go test -v ./... -covermode=count -coverprofile=coverage.out
       - cmd: go tool cover -func=coverage.out
       - cmd: go tool cover -html=coverage.out -o=coverage.html
-      - cmd: echo -e '\e[0;32mPassed\e[0m'
-
-  go:codeql:database:
-    desc: Build the CodeQL database for analysis
-    run: once
-    internal: true
-    silent: true
-    sources:
-      - bin/{{ .bin }}
-    env:
-      CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
-    deps:
-      - task: check:exec:codeql
-    cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
-      - cmd: codeql database create .codeql --language=go --threads=0 --overwrite | grep -vP '([Ee]xtracting|Skipping)'
-      - cmd: codeql database finalize .codeql --threads=0 --cleanup-upgrade-backups || true
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
-
-  go:codeql:
-    desc: Run CodeQL static code analysis
-    summary: |-
-      Run the CodeQL application against the codebase looking for configuration issues and vunlerabilitys in both the
-      code and any dependencies upstream.
-    silent: true
-    deps:
-      - task: go:codeql:database
-      - task: go:build
-    sources:
-      - go.mod
-      - go.sum
-      - main.go
-      - "**/*.go"
-    cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
-      - cmd: |-
-          codeql database analyze --quiet --no-print-metrics-summary \
-            --format=sarif-latest --output codeql.sarif --sarif-add-file-contents \
-            -- .codeql codeql/go-queries
-      - cmd: echo -e '\e[0;32mPassed\e[0m'
 
   go:clean:
     desc: Clean temporary directories and files from this function
@@ -200,11 +153,8 @@ tasks:
     run: once
     silent: true
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - cmd: rm -rf dist
       - cmd: rm -f bin/{{ .bin }}
       - cmd: rm -rf coverage/*/*
       - cmd: rm -f coverage.out coverage.html
-      - cmd: rm -rf .codeql
-      - cmd: rm -f codeql.sarif
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'

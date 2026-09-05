@@ -31,7 +31,6 @@ tasks:
       - task: prettier
     silent: true
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
       - if: '{{ ne .files "" }}'
         cmd: yamllint --config-file .yamllint.yaml {{ .files }}
-      - cmd: echo -e '\e[0;32mPassed\e[0m'

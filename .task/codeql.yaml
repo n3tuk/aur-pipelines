@@ -1,0 +1,56 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: 3
+
+tasks:
+  codeql:database:
+    desc: Build the CodeQL database for analysis
+    run: once
+    internal: true
+    silent: true
+    sources:
+      - bin/{{ .bin }}
+    env:
+      CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
+      CODEQL_EXTRACTOR_GO_OPTION_EXTRACT_TESTS: "on"
+    deps:
+      - task: check:exec:codeql
+    cmds:
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
+      - cmd: mkdir -p .codeql/go
+      - cmd: codeql database create .codeql/go --language=go --source-root=. --overwrite
+    status:
+      - test -d .codeql/go
+
+  codeql:
+    desc: Run CodeQL static code analysis
+    summary: |-
+      Run the CodeQL application against the codebase looking for configuration issues and vunlerabilitys in both the
+      code and any dependencies upstream.
+    silent: true
+    deps:
+      - task: codeql:database
+      - task: go:build
+    sources:
+      - go.mod
+      - go.sum
+      - main.go
+      - "**/*.go"
+    cmds:
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
+      - defer: |-
+          ISSUE_COUNT=$(jq '.runs[0].results | length' codeql.sarif)
+          echo "Analysis completed: Found $ISSUE_COUNT issue(s)"
+      - cmd: |-
+          codeql database analyze .codeql/go codeql/go-queries --quiet \
+            --format=sarif-latest --output codeql.sarif --sarif-add-file-contents
+
+  codeql:clean:
+    desc: Clean the CodeQL cache
+    silent: true
+    run: once
+    cmds:
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
+      - cmd: rm -rf .codeql
+      - cmd: rm -f codeql.sarif
