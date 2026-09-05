@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/n3tuk/aur-pipelines/main/schemas/aur-pipelines.json",
+  "properties": {
+    "container": {
+      "properties": {
+        "build": {
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Image is the container image repository name (e.g. \"archlinux\")."
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tag is the container image tag (e.g. \"base-devel\")."
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": ["image", "tag"],
+          "description": "Build is the image used for the package build stage."
+        },
+        "sign": {
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Image is the container image repository name (e.g. \"archlinux\")."
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tag is the container image tag (e.g. \"base-devel\")."
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": ["image", "tag"],
+          "description": "Sign is the image used for the package signing stage."
+        },
+        "upload": {
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Image is the container image repository name (e.g. \"archlinux\")."
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tag is the container image tag (e.g. \"base-devel\")."
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": ["image", "tag"],
+          "description": "Upload is the image used for the repository upload stage."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": ["build", "sign", "upload"],
+      "description": "Container holds the container images used for each pipeline stage."
+    },
+    "bucket": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name is the name of the object-storage bucket."
+        },
+        "repository": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repository is the Arch repository (database) name within the bucket."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": ["name", "repository"],
+      "description": "Bucket describes the target object-storage bucket and repository."
+    },
+    "webhook": {
+      "items": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name is a human-readable identifier for the webhook (e.g. \"ntfy\")."
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1,
+            "format": "uri",
+            "description": "URL is the endpoint the notification is sent to."
+          },
+          "headers": {
+            "items": {
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Name is the HTTP header field name."
+                },
+                "value": {
+                  "type": "string",
+                  "description": "Value is the HTTP header field value (may contain templating)."
+                }
+              },
+              "additionalProperties": false,
+              "type": "object",
+              "required": ["name", "value"],
+              "description": "Header is a single HTTP header name/value pair sent with a webhook request."
+            },
+            "type": "array",
+            "description": "Headers is the ordered list of HTTP headers to send with the request."
+          },
+          "template": {
+            "type": "string",
+            "description": "Template is the pass-through notification body template."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["name", "url"],
+        "description": "Webhook describes a single notification endpoint invoked when a pipeline completes."
+      },
+      "type": "array",
+      "description": "Webhooks is the list of notification webhooks to invoke on completion."
+    },
+    "packages": {
+      "items": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name is the AUR package name."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["name"],
+        "description": "Package is a single AUR package entry to generate a pipeline for."
+      },
+      "type": "array",
+      "minItems": 1,
+      "description": "Packages is the list of AUR packages to generate pipelines for."
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": ["container", "bucket", "packages"],
+  "description": "Config is the top-level aur-pipelines configuration, loaded from a YAML file."
+}

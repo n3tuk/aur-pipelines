@@ -42,6 +42,14 @@ linters:
             - github.com/n3tuk/aur-pipelines
             - github.com/spf13/cobra
             - github.com/spf13/viper
+        tools:
+          files:
+            - "**/tools/**/*.go"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/n3tuk/aur-pipelines
+            - github.com/invopop/jsonschema
     godox:
       keywords:
         - WARN

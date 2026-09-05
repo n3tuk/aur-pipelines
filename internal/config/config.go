@@ -13,33 +13,33 @@ type (
 	// file. Each field corresponds to a top-level key in that file.
 	Config struct {
 		// Container holds the container images used for each pipeline stage.
-		Container Container `mapstructure:"container" yaml:"container"`
+		Container Container `json:"container" jsonschema:"required" mapstructure:"container" yaml:"container"`
 		// Bucket describes the target object-storage bucket and repository.
-		Bucket Bucket `mapstructure:"bucket" yaml:"bucket"`
+		Bucket Bucket `json:"bucket" jsonschema:"required" mapstructure:"bucket" yaml:"bucket"`
 		// Webhooks is the list of notification webhooks to invoke on completion.
-		Webhooks []Webhook `mapstructure:"webhook" yaml:"webhook"`
+		Webhooks []Webhook `json:"webhook,omitempty" mapstructure:"webhook" yaml:"webhook"`
 		// Packages is the list of AUR packages to generate pipelines for.
-		Packages []Package `mapstructure:"packages" yaml:"packages"`
+		Packages []Package `json:"packages" jsonschema:"required,minItems=1" mapstructure:"packages" yaml:"packages"`
 	}
 
 	// Container groups the container image references used by the distinct
 	// stages of a generated pipeline.
 	Container struct {
 		// Build is the image used for the package build stage.
-		Build Image `mapstructure:"build" yaml:"build"`
+		Build Image `json:"build" jsonschema:"required" mapstructure:"build" yaml:"build"`
 		// Sign is the image used for the package signing stage.
-		Sign Image `mapstructure:"sign" yaml:"sign"`
+		Sign Image `json:"sign" jsonschema:"required" mapstructure:"sign" yaml:"sign"`
 		// Upload is the image used for the repository upload stage.
-		Upload Image `mapstructure:"upload" yaml:"upload"`
+		Upload Image `json:"upload" jsonschema:"required" mapstructure:"upload" yaml:"upload"`
 	}
 
 	// Image is a container image reference expressed as a repository image
 	// name and a tag.
 	Image struct {
 		// Image is the container image repository name (e.g. "archlinux").
-		Image string `mapstructure:"image" yaml:"image"`
+		Image string `json:"image" jsonschema:"required,minLength=1" mapstructure:"image" yaml:"image"`
 		// Tag is the container image tag (e.g. "base-devel").
-		Tag string `mapstructure:"tag" yaml:"tag"`
+		Tag string `json:"tag" jsonschema:"required,minLength=1" mapstructure:"tag" yaml:"tag"`
 	}
 
 	// Bucket describes the target object-storage bucket holding the Arch
@@ -47,9 +47,9 @@ type (
 	// it.
 	Bucket struct {
 		// Name is the name of the object-storage bucket.
-		Name string `mapstructure:"name" yaml:"name"`
+		Name string `json:"name" jsonschema:"required,minLength=1" mapstructure:"name" yaml:"name"`
 		// Repository is the Arch repository (database) name within the bucket.
-		Repository string `mapstructure:"repository" yaml:"repository"`
+		Repository string `json:"repository" jsonschema:"required,minLength=1" mapstructure:"repository" yaml:"repository"`
 	}
 
 	// Webhook describes a single notification endpoint invoked when a pipeline
@@ -58,22 +58,22 @@ type (
 	// does not interpret them.
 	Webhook struct {
 		// Name is a human-readable identifier for the webhook (e.g. "ntfy").
-		Name string `mapstructure:"name" yaml:"name"`
+		Name string `json:"name" jsonschema:"required,minLength=1" mapstructure:"name" yaml:"name"`
 		// URL is the endpoint the notification is sent to.
-		URL string `mapstructure:"url" yaml:"url"`
+		URL string `json:"url" jsonschema:"required,minLength=1,format=uri" mapstructure:"url" yaml:"url"`
 		// Headers is the ordered list of HTTP headers to send with the request.
-		Headers []Header `mapstructure:"headers" yaml:"headers"`
+		Headers []Header `json:"headers,omitempty" mapstructure:"headers" yaml:"headers"`
 		// Template is the pass-through notification body template.
-		Template string `mapstructure:"template" yaml:"template"`
+		Template string `json:"template,omitempty" mapstructure:"template" yaml:"template"`
 	}
 
 	// Header is a single HTTP header name/value pair sent with a webhook
 	// request. The value is an opaque, pass-through string.
 	Header struct {
 		// Name is the HTTP header field name.
-		Name string `mapstructure:"name" yaml:"name"`
+		Name string `json:"name" jsonschema:"required,minLength=1" mapstructure:"name" yaml:"name"`
 		// Value is the HTTP header field value (may contain templating).
-		Value string `mapstructure:"value" yaml:"value"`
+		Value string `json:"value" jsonschema:"required" mapstructure:"value" yaml:"value"`
 	}
 
 	// Package is a single AUR package entry to generate a pipeline for. The
@@ -81,6 +81,6 @@ type (
 	// per-package overrides or options.
 	Package struct {
 		// Name is the AUR package name.
-		Name string `mapstructure:"name" yaml:"name"`
+		Name string `json:"name" jsonschema:"required,minLength=1" mapstructure:"name" yaml:"name"`
 	}
 )

@@ -1,0 +1,17 @@
+---
+container:
+  build:
+    image: archlinux
+    tag: base-devel
+  sign:
+    image: archlinux
+    tag: base-devel
+  upload:
+    image: archlinux
+    tag: base-devel
+
+bucket:
+  name: your-bucket-name
+  repository: private
+
+packages: []

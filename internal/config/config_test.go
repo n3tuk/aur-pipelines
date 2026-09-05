@@ -12,6 +12,8 @@ import (
 const (
 	imageArchLinux = "archlinux"
 	imageReference = "archlinux:base-devel"
+	tagBaseDevel   = "base-devel"
+	packageKalcBin = "kalc-bin"
 )
 
 func TestLoadValid(t *testing.T) {
@@ -60,7 +62,7 @@ func TestLoadValid(t *testing.T) {
 		t.Errorf("Webhooks[0].Template did not preserve the pass-through template: %q", webhook.Template)
 	}
 
-	wantPackages := []string{"kalc-bin", "ntfysh-bin", "keybase-bin"}
+	wantPackages := []string{packageKalcBin, "ntfysh-bin", "keybase-bin"}
 	if len(cfg.Packages) != len(wantPackages) {
 		t.Fatalf("len(Packages) = %d, want %d", len(cfg.Packages), len(wantPackages))
 	}
@@ -167,7 +169,7 @@ func TestImageReference(t *testing.T) {
 		want  string
 	}{
 		"image and tag": {
-			image: config.Image{Image: imageArchLinux, Tag: "base-devel"},
+			image: config.Image{Image: imageArchLinux, Tag: tagBaseDevel},
 			want:  imageReference,
 		},
 		"image only": {
