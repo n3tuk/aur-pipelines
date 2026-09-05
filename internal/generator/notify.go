@@ -34,8 +34,8 @@ func (g *Generator) notifyStep(status string) *pipeline.Step {
 		Config: &pipeline.TaskConfig{
 			Platform: platformLinux,
 			ImageResource: &pipeline.ImageResource{
-				Type:   "registry-image",
-				Source: map[string]string{"repository": notifyImage},
+				Type:   typeRegistryImage,
+				Source: map[string]string{sourceRepository: notifyImage},
 			},
 			// curlimages/curl is Alpine-based and provides sh, not bash.
 			Run: pipeline.Command{Path: "sh", Args: []string{"-c", g.notifyScript()}},

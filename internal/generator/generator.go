@@ -63,6 +63,10 @@ const (
 
 	// platformLinux is the Concourse task platform for all generated tasks.
 	platformLinux = "linux"
+	// typeRegistryImage is the resource type used to fetch task images.
+	typeRegistryImage = "registry-image"
+	// sourceRepository is the image-source key naming the image repository.
+	sourceRepository = "repository"
 )
 
 // New constructs a Generator using the given configuration.

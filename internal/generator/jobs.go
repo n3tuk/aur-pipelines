@@ -150,13 +150,13 @@ func (g *Generator) repositoryJob() pipeline.Job {
 // image builds the task image_resource for the given configured container
 // image, using registry-image so any OCI registry image can be used.
 func (g *Generator) image(img config.Image) *pipeline.ImageResource {
-	source := map[string]string{"repository": img.Image}
+	source := map[string]string{sourceRepository: img.Image}
 	if img.Tag != "" {
 		source["tag"] = img.Tag
 	}
 
 	return &pipeline.ImageResource{
-		Type:   "registry-image",
+		Type:   typeRegistryImage,
 		Source: source,
 	}
 }
