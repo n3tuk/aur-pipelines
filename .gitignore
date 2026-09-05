@@ -17,6 +17,9 @@ coverage/
 bin/
 dist/
 
+# Ignore the default output directory for locally-generated pipelines
+pipelines/
+
 # Ignore CodeQL processing directory
 .codeql/
 
