@@ -161,7 +161,11 @@ jobs:
             - -c
             - |-
               set -euo pipefail
-              curl --fail --silent --show-error --header 'Priority: low' --header 'Title: {{ .PackageName }} build' --data '{{ if eq .PipelineStatus "succeeded" }} ok {{ else }} fail {{ end }}' "${WEBHOOK_URL}"
+              curl --fail --silent --show-error \
+                --header 'Priority: low' \
+                --header 'Title: {{ .PackageName }} build' \
+                --data '{{ if eq .PipelineStatus "succeeded" }} ok {{ else }} fail {{ end }}' \
+                "${WEBHOOK_URL}"
     on_failure:
       task: notify-failed
       params:
@@ -179,4 +183,8 @@ jobs:
             - -c
             - |-
               set -euo pipefail
-              curl --fail --silent --show-error --header 'Priority: low' --header 'Title: {{ .PackageName }} build' --data '{{ if eq .PipelineStatus "succeeded" }} ok {{ else }} fail {{ end }}' "${WEBHOOK_URL}"
+              curl --fail --silent --show-error \
+                --header 'Priority: low' \
+                --header 'Title: {{ .PackageName }} build' \
+                --data '{{ if eq .PipelineStatus "succeeded" }} ok {{ else }} fail {{ end }}' \
+                "${WEBHOOK_URL}"

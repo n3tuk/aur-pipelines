@@ -60,11 +60,13 @@ func (g *Generator) notifyScript() string {
 }
 
 // curlCommand renders a single curl invocation for a webhook, including its
-// headers and body template. The webhook URL is taken from the credential
-// reference in the environment rather than the (potentially secret) configured
-// URL, so it is not embedded in the pipeline.
+// headers and body template. Each argument is placed on its own line using
+// shell line-continuations, so the generated script reads as a readable
+// multi-line block rather than one long line. The webhook URL is taken from the
+// credential reference in the environment rather than the (potentially secret)
+// configured URL, so it is not embedded in the pipeline.
 func curlCommand(webhook config.Webhook) string {
-	parts := []string{"curl", "--fail", "--silent", "--show-error"}
+	lines := []string{"curl --fail --silent --show-error"}
 
 	headers := append([]config.Header(nil), webhook.Headers...)
 	sort.SliceStable(headers, func(i, j int) bool {
@@ -72,16 +74,18 @@ func curlCommand(webhook config.Webhook) string {
 	})
 
 	for _, header := range headers {
-		parts = append(parts, "--header", quote(fmt.Sprintf("%s: %s", header.Name, header.Value)))
+		lines = append(lines, "--header "+quote(fmt.Sprintf("%s: %s", header.Name, header.Value)))
 	}
 
 	if webhook.Template != "" {
-		parts = append(parts, "--data", quote(webhook.Template))
+		lines = append(lines, "--data "+quote(webhook.Template))
 	}
 
-	parts = append(parts, `"${WEBHOOK_URL}"`)
+	lines = append(lines, `"${WEBHOOK_URL}"`)
 
-	return strings.Join(parts, " ")
+	// Join with a trailing backslash and newline so the command spans multiple
+	// lines; continuation lines are indented by two spaces for readability.
+	return strings.Join(lines, " \\\n  ")
 }
 
 // quote wraps a value in single quotes for safe inclusion in a shell command,
