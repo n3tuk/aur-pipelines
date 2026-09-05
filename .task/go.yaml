@@ -74,6 +74,11 @@ tasks:
       - task: go:modules
       - task: go:lint
       - task: go:test
+    env:
+      # GoReleaser's --single-target builds for the host GOAMD64 (default v1),
+      # but .goreleaser.yaml pins the amd64 variant to v3; align them so the
+      # requested single target matches a configured build on amd64 hosts.
+      GOAMD64: v3
     cmds:
       - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - cmd: goreleaser build --clean --timeout 2m --snapshot --single-target --output bin/{{ .bin }}
