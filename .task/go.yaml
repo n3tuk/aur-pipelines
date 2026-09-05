@@ -142,11 +142,24 @@ tasks:
       - "**/testdata/*"
     deps:
       - task: check:exec:go
+      - task: check:exec:tparse
       - task: go:dirs
       - task: go:lint
     cmds:
       - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
-      - cmd: go test -v ./... -covermode=count -coverprofile=coverage.out
+      - cmd: go test -v ./... -covermode=count -coverprofile=coverage.out -json | tparse -smallscreen
+
+  go:coverage:
+    desc: Run the coverage tests for the application and generate a coverage report
+    silent: true
+    sources:
+      - main.go
+      - "**/*.go"
+      - "**/testdata/*"
+    deps:
+      - task: go:test
+    cmds:
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
       - cmd: go tool cover -func=coverage.out
       - cmd: go tool cover -html=coverage.out -o=coverage.html
 
