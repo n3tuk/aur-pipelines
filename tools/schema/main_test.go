@@ -4,29 +4,29 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
 // TestSchemaMatchesCommittedFiles is a golden test asserting that the schema
-// produced by generate() exactly matches every committed output file. If this
-// fails, run `task go:schema` to regenerate the files.
+// produced by generate() matches every committed output file. The comparison
+// is semantic (the parsed JSON structures are compared) rather than
+// byte-for-byte, because the on-disk files are reformatted by Prettier as part
+// of the repository's lint step, which changes their whitespace but not their
+// meaning. If this fails, run `task go:schema` to regenerate the files.
 //
-// This test uses t.Chdir, which is incompatible with t.Parallel.
-//
-//nolint:paralleltest // t.Chdir cannot be used in a parallel test
+//nolint:paralleltest // uses t.Chdir, which is incompatible with t.Parallel
 func TestSchemaMatchesCommittedFiles(t *testing.T) {
 	root := repositoryRoot(t)
-	encoded := generateFromRoot(t)
+	generated := decodeJSON(t, generateFromRoot(t))
 
 	for _, rel := range outputPaths() {
-		path := filepath.Join(root, rel)
-
-		committed, err := os.ReadFile(path)
+		raw, err := os.ReadFile(filepath.Join(root, rel))
 		if err != nil {
 			t.Fatalf("reading committed schema %q (run `task go:schema`?): %v", rel, err)
 		}
 
-		if string(committed) != string(encoded) {
+		if !reflect.DeepEqual(decodeJSON(t, raw), generated) {
 			t.Errorf("committed schema %q is out of date; run `task go:schema` to regenerate", rel)
 		}
 	}
@@ -34,19 +34,24 @@ func TestSchemaMatchesCommittedFiles(t *testing.T) {
 
 // TestSchemaIsValidJSON asserts the generated schema is well-formed JSON.
 //
-// This test uses t.Chdir (via generateFromRoot), which is incompatible with
-// t.Parallel.
-//
-//nolint:paralleltest // t.Chdir cannot be used in a parallel test
+//nolint:paralleltest // uses t.Chdir (via generateFromRoot), incompatible with t.Parallel
 func TestSchemaIsValidJSON(t *testing.T) {
-	encoded := generateFromRoot(t)
+	_ = decodeJSON(t, generateFromRoot(t))
+}
+
+// decodeJSON parses JSON bytes into a generic structure, failing the test on
+// error.
+func decodeJSON(t *testing.T, data []byte) any {
+	t.Helper()
 
 	var decoded any
 
-	err := json.Unmarshal(encoded, &decoded)
+	err := json.Unmarshal(data, &decoded)
 	if err != nil {
-		t.Fatalf("generated schema is not valid JSON: %v", err)
+		t.Fatalf("decoding JSON: %v", err)
 	}
+
+	return decoded
 }
 
 // repositoryRoot returns the absolute path to the repository root, which is two
