@@ -33,6 +33,7 @@ linters:
             - github.com/go-git/go-billy/v5
             - github.com/spf13/viper
             - github.com/santhosh-tekuri/jsonschema/v6
+            - go.yaml.in/yaml/v3
         cmd:
           files:
             - "**/cmd/**/*.go"
