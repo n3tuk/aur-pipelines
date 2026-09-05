@@ -18,6 +18,9 @@ const (
 	pkgKalcBin  = "kalc-bin"
 	pkgNtfyshB  = "ntfysh-bin"
 	pkgKeybase  = "keybase-bin"
+	pkgGlibc    = "glibc"
+	pkgLibgcc   = "libgcc"
+	provKalc    = "kalc"
 	contentType = "application/json"
 )
 
@@ -67,7 +70,7 @@ func TestInfoDecodesResults(t *testing.T) {
 		t.Errorf("Version = %q, want %q", pkg.Version, "1.2.3-1")
 	}
 
-	if !slices.Equal(pkg.Depends, []string{"gcc-libs", "glibc"}) {
+	if !slices.Equal(pkg.Depends, []string{"gcc-libs", pkgGlibc}) {
 		t.Errorf("Depends = %v, want [gcc-libs glibc]", pkg.Depends)
 	}
 
@@ -75,7 +78,7 @@ func TestInfoDecodesResults(t *testing.T) {
 		t.Errorf("MakeDepends = %v, want [cargo]", pkg.MakeDepends)
 	}
 
-	if !slices.Equal(pkg.Provides, []string{"kalc"}) {
+	if !slices.Equal(pkg.Provides, []string{provKalc}) {
 		t.Errorf("Provides = %v, want [kalc]", pkg.Provides)
 	}
 }
@@ -271,7 +274,7 @@ func TestMembers(t *testing.T) {
 
 	client := aur.NewClient(aur.WithBaseURL(server.URL))
 
-	members, err := client.Members(t.Context(), pkgKalcBin, "glibc", pkgKeybase)
+	members, err := client.Members(t.Context(), pkgKalcBin, pkgGlibc, pkgKeybase)
 	if err != nil {
 		t.Fatalf("Members() returned unexpected error: %v", err)
 	}
