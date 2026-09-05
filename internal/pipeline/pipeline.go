@@ -4,7 +4,7 @@
 // The model is intentionally programmatic (Go structs marshalled to YAML)
 // rather than template-based, so generated pipelines are type-safe and cannot
 // drift from a textual template. Secret references (for example
-// "((gpg-signing-key))") and pass-through notification templates (for example
+// "((gpg.signing-key))") and pass-through notification templates (for example
 // "{{ .PackageName }}") are ordinary string values and are emitted verbatim;
 // aur-pipelines does not interpret them.
 package pipeline

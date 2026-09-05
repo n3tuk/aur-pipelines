@@ -10,7 +10,7 @@ const (
 	// r2Endpoint is the S3-compatible endpoint template for Cloudflare R2. The
 	// account is supplied via a credential-manager reference so it is not
 	// embedded.
-	r2Endpoint = "https://((r2-account-id)).r2.cloudflarestorage.com"
+	r2Endpoint = "https://((r2.account-id)).r2.cloudflarestorage.com"
 	// r2Region is the region string R2 expects for S3-compatible access.
 	r2Region = "auto"
 )

@@ -6,7 +6,7 @@
 //
 // Secrets are never embedded: the GPG signing key and passphrase, the R2
 // credentials, and the notification webhook URL are all referenced as
-// Concourse credential-manager lookups (for example "((gpg-signing-key))") and
+// Concourse credential-manager lookups (for example "((gpg.signing-key))") and
 // resolved by Concourse at run time.
 package generator
 
@@ -39,11 +39,11 @@ const (
 	// need. These are flat names resolved by Concourse against its configured
 	// team and pipeline credential paths; aur-pipelines never sees their
 	// values.
-	secretGPGKey        = "((gpg-signing-key))"        //nolint:gosec // credential-manager reference, not a secret
-	secretGPGPassphrase = "((gpg-signing-passphrase))" //nolint:gosec // credential-manager reference, not a secret
-	secretR2AccessKey   = "((r2-access-key-id))"       //nolint:gosec // credential-manager reference, not a secret
-	secretR2SecretKey   = "((r2-secret-access-key))"   //nolint:gosec // credential-manager reference, not a secret
-	secretWebhookURL    = "((webhook-url))"            //nolint:gosec // credential-manager reference, not a secret
+	secretGPGKey        = "((gpg.signing-key))"        //nolint:gosec // credential-manager reference, not a secret
+	secretGPGPassphrase = "((gpg.signing-passphrase))" //nolint:gosec // credential-manager reference, not a secret
+	secretR2AccessKey   = "((r2.access-key-id))"       //nolint:gosec // credential-manager reference, not a secret
+	secretR2SecretKey   = "((r2.secret-access-key))"   //nolint:gosec // credential-manager reference, not a secret
+	secretWebhookURL    = "((webhook.url))"            //nolint:gosec // credential-manager reference, not a secret
 
 	// Job names used within every generated package pipeline.
 	jobBuildUpload = "build-upload"

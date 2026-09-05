@@ -218,11 +218,11 @@ func TestSecretsAreCredentialReferences(t *testing.T) {
 	got := generatePipeline(t, testConfig(), result, baseKalcBin)
 
 	for _, secret := range []string{
-		"((gpg-signing-key))",
-		"((gpg-signing-passphrase))",
-		"((r2-access-key-id))",
-		"((r2-secret-access-key))",
-		"((webhook-url))",
+		"((gpg.signing-key))",
+		"((gpg.signing-passphrase))",
+		"((r2.access-key-id))",
+		"((r2.secret-access-key))",
+		"((webhook.url))",
 	} {
 		if !strings.Contains(got, secret) {
 			t.Errorf("expected credential reference %q in pipeline", secret)

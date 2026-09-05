@@ -62,7 +62,7 @@ func TestCleanupUsesR2Credentials(t *testing.T) {
 
 	out := cleanupYAML(t)
 
-	for _, secret := range []string{"((r2-access-key-id))", "((r2-secret-access-key))"} {
+	for _, secret := range []string{"((r2.access-key-id))", "((r2.secret-access-key))"} {
 		if !strings.Contains(out, secret) {
 			t.Errorf("cleanup pipeline should reference %q:\n%s", secret, out)
 		}

@@ -51,8 +51,8 @@ func TestMarshalResourceWithSecretSource(t *testing.T) {
 				Icon: "cloud-upload",
 				//nolint:gosec // values are Concourse credential-manager references, not hardcoded secrets
 				Source: map[string]string{
-					"access_key_id":     "((r2-access-key-id))",
-					"secret_access_key": "((r2-secret-access-key))",
+					"access_key_id":     "((r2.access-key-id))",
+					"secret_access_key": "((r2.secret-access-key))",
 					"bucket":            "your-bucket-name",
 				},
 			},
@@ -72,9 +72,9 @@ resources:
     type: s3
     icon: cloud-upload
     source:
-      access_key_id: ((r2-access-key-id))
+      access_key_id: ((r2.access-key-id))
       bucket: your-bucket-name
-      secret_access_key: ((r2-secret-access-key))
+      secret_access_key: ((r2.secret-access-key))
 jobs:
   - name: noop
     plan:
@@ -99,7 +99,7 @@ func TestMarshalSerialSignJobWithPassed(t *testing.T) {
 					{
 						Task: "upload-packages",
 						Params: map[string]string{
-							"ACCESS_KEY": "((r2-access-key-id))",
+							"ACCESS_KEY": "((r2.access-key-id))",
 						},
 						Config: &pipeline.TaskConfig{
 							Platform: "linux",
@@ -129,7 +129,7 @@ jobs:
         trigger: true
       - task: upload-packages
         params:
-          ACCESS_KEY: ((r2-access-key-id))
+          ACCESS_KEY: ((r2.access-key-id))
         config:
           platform: linux
           image_resource:

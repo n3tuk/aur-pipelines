@@ -9,32 +9,32 @@ resources:
     type: s3
     icon: package-upload
     source:
-      access_key_id: ((r2-access-key-id))
+      access_key_id: ((r2.access-key-id))
       bucket: my-bucket
-      endpoint: https://((r2-account-id)).r2.cloudflarestorage.com
+      endpoint: https://((r2.account-id)).r2.cloudflarestorage.com
       regexp: app/app-.*\.pkg\.tar\.zst
       region_name: auto
-      secret_access_key: ((r2-secret-access-key))
+      secret_access_key: ((r2.secret-access-key))
   - name: signatures
     type: s3
     icon: cloud-lock
     source:
-      access_key_id: ((r2-access-key-id))
+      access_key_id: ((r2.access-key-id))
       bucket: my-bucket
-      endpoint: https://((r2-account-id)).r2.cloudflarestorage.com
+      endpoint: https://((r2.account-id)).r2.cloudflarestorage.com
       regexp: app/app-.*\.pkg\.tar\.zst\.sig
       region_name: auto
-      secret_access_key: ((r2-secret-access-key))
+      secret_access_key: ((r2.secret-access-key))
   - name: repository-db
     type: s3
     icon: database
     source:
-      access_key_id: ((r2-access-key-id))
+      access_key_id: ((r2.access-key-id))
       bucket: my-bucket
-      endpoint: https://((r2-account-id)).r2.cloudflarestorage.com
+      endpoint: https://((r2.account-id)).r2.cloudflarestorage.com
       regexp: private\.db\.tar\.gz
       region_name: auto
-      secret_access_key: ((r2-secret-access-key))
+      secret_access_key: ((r2.secret-access-key))
 jobs:
   - name: build-upload
     plan:
@@ -77,8 +77,8 @@ jobs:
         trigger: true
       - task: sign
         params:
-          GPG_PASSPHRASE: ((gpg-signing-passphrase))
-          GPG_PRIVATE_KEY: ((gpg-signing-key))
+          GPG_PASSPHRASE: ((gpg.signing-passphrase))
+          GPG_PRIVATE_KEY: ((gpg.signing-key))
         config:
           platform: linux
           image_resource:
@@ -150,7 +150,7 @@ jobs:
       task: notify-succeeded
       params:
         PIPELINE_STATUS: succeeded
-        WEBHOOK_URL: ((webhook-url))
+        WEBHOOK_URL: ((webhook.url))
       config:
         platform: linux
         image_resource:
@@ -168,7 +168,7 @@ jobs:
       task: notify-failed
       params:
         PIPELINE_STATUS: failed
-        WEBHOOK_URL: ((webhook-url))
+        WEBHOOK_URL: ((webhook.url))
       config:
         platform: linux
         image_resource:
