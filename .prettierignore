@@ -4,3 +4,6 @@
 # Ignore any generated files in the dist/ directory
 dist/*.yaml
 dist/*.json
+
+# Ignore test data files which are intentionally badly formatted or structurally invalid
+**/testdata/*.yaml

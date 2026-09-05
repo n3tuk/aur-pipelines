@@ -1,0 +1,8 @@
+---
+container:
+  build:
+    image: archlinux
+      tag: base-devel
+  this is not valid yaml: : :
+packages:
+- name: kalc-bin

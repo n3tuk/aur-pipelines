@@ -1,0 +1,37 @@
+---
+container:
+  build:
+    image: archlinux
+    tag: base-devel
+  sign:
+    image: archlinux
+    tag: base-devel
+  upload:
+    image: archlinux
+    tag: base-devel
+
+bucket:
+  name: your-bucket-name
+  repository: private
+
+webhook:
+  - name: ntfy
+    url: https://ntfy.sh/your-webhook-url
+    headers:
+      - name: Title
+        value: "{{ .PackageName }} v{{ .PackageVersion }} Build Notification"
+      - name: Icon
+        value: https://assets.n3t.uk/images/concourse-256x256.png
+      - name: Priority
+        value: low
+      - name: Tags
+        value: aur, concourse, {{ .PackageName }}, {{ .PackageVersion }}
+    template: >-
+      {{ if eq .PipelineStatus "succeeded" }} Package {{ .PackageName }} v{{ .PackageVersion }} has been successfully
+      built and uploaded to the repository. {{ else }} Package {{ .PackageName }} v{{ .PackageVersion }} failed to build
+      or upload. {{ end }}
+
+packages:
+  - name: kalc-bin
+  - name: ntfysh-bin
+  - name: keybase-bin

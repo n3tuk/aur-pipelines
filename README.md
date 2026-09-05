@@ -88,9 +88,12 @@ webhook:
     headers:
       - name: Title
         value: "{{ .PackageName }} v{{ .PackageVersion }} Build Notification"
-      - icon: https://assets.n3t.uk/images/concourse-256x256.png
-      - click: "{{ .PipelineURL }}"
-      - actions: view, View Pipeline, {{ .PipelineURL }}
+      - name: Icon
+        value: https://assets.n3t.uk/images/concourse-256x256.png
+      - name: Click
+        value: "{{ .PipelineURL }}"
+      - name: Actions
+        value: view, View Pipeline, {{ .PipelineURL }}
       - name: Priority
         value: low
       - name: Tags

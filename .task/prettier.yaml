@@ -31,13 +31,14 @@ tasks:
       - "{{ .ROOT_DIR }}/.gitignore"
       # Ignore the CodeQL cache
       - exclude: .codeql/**
-      # Ignore local temporary directories
+      # Ignore local temporary directories and test data
       - exclude: dist/**
+      - exclude: internal/**/testdata/**
     vars:
       files:
         sh: |-
           ( find . -type f \
-              -not \( -path './.codeql/*' -or -path './dist/*' \) \
+              -not \( -path './.codeql/*' -or -path './dist/*' -or -path './internal/*/testdata/*' \) \
               -and \( -iname '*.md' -or -iname '*.yml' -or -iname '*.yaml' -or -iname '*.json' -or -iname '.snyk' \) \
               -print 2>/dev/null \
             | sed 's|^\./||' | paste -sd' ' - ) || echo 'README.md'

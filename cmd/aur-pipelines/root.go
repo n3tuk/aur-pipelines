@@ -21,6 +21,7 @@ func newRootCommand(info cli.BuildInfo) *cobra.Command {
 	}
 
 	root.AddCommand(newVersionCommand(info))
+	root.AddCommand(newGenerateCommand())
 
 	return root
 }

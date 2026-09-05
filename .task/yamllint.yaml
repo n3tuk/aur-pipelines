@@ -20,13 +20,14 @@ tasks:
       - "{{ .ROOT_DIR }}/.yamllint.yaml"
       # Ignore the CodeQL cache
       - exclude: .codeql/**
-      # Ignore local temporary directories
+      # Ignore local temporary directories and test data
       - exclude: dist/**
+      - exclude: internal/**/testdata/**
     vars:
       files:
         sh: |-
           ( find . -type f \
-              -not \( -path './.codeql/*' -or './dist/*' \) \
+              -not \( -path './.codeql/*' -or -path './dist/*' -or -path './internal/*/testdata/*' \) \
               -and \( -iname '*.yml' -or -iname '*.yaml' \) -print 2>/dev/null \
             | sed 's|^\./||' | paste -sd' ' - ) || true
     deps:
