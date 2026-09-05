@@ -18,7 +18,7 @@ webhook:
   - name: ntfy-success
     type: build
     when: on_success
-    url: https://ntfy.sh/your-webhook-url
+    secret: ntfy
     headers:
       - name: Title
         value: ${PACKAGE_NAME} v${PACKAGE_VERSION} Built
@@ -31,7 +31,7 @@ webhook:
   - name: ntfy-failure
     type: build
     when: on_failure
-    url: https://ntfy.sh/your-webhook-url
+    secret: ntfy
     headers:
       - name: Title
         value: ${PACKAGE_NAME} v${PACKAGE_VERSION} Build Failure

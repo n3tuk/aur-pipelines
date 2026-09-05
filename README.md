@@ -56,7 +56,13 @@ pipeline) before the generated pipelines can run:
 | `((r2.account-id))`          | Cloudflare R2 account ID, used to build the S3-compatible endpoint. |
 | `((r2.access-key-id))`       | Cloudflare R2 access key ID.                                        |
 | `((r2.secret-access-key))`   | Cloudflare R2 secret access key.                                    |
-| `((webhook.url))`            | Notification webhook URL (including any embedded token).            |
+| `((webhooks/<secret>.url))`  | Notification endpoint URL, one credential per configured webhook.   |
+
+Each notification webhook is configured with a `secret` name (rather than a URL) and its endpoint is looked up from a
+dedicated credential at `webhooks/<secret>` with a `url` field. For example a webhook with `secret: ntfy` reads its
+endpoint from `((webhooks/ntfy.url))`. This gives every webhook its own credential — keeping endpoints (and any embedded
+tokens) out of the configuration and the generated pipelines entirely — and leaves room to add further fields to each
+webhook's credential (such as authentication) in future.
 
 ### Dependency ordering between pipelines
 
@@ -116,7 +122,7 @@ webhook:
   - name: ntfy-success
     type: build
     when: on_success
-    url: https://ntfy.sh/your-webhook-url
+    secret: ntfy
     headers:
       - name: Title
         value: ${PACKAGE_NAME} v${PACKAGE_VERSION} Built
@@ -135,7 +141,7 @@ webhook:
   - name: ntfy-failure
     type: build
     when: on_failure
-    url: https://ntfy.sh/your-webhook-url
+    secret: ntfy
     headers:
       - name: Title
         value: ${PACKAGE_NAME} v${PACKAGE_VERSION} Build Failure
@@ -155,7 +161,7 @@ webhook:
   - name: ntfy-cleanup
     type: cleanup
     when: on_failure
-    url: https://ntfy.sh/your-webhook-url
+    secret: ntfy
     headers:
       - name: Title
         value: Repository Cleanup Notification
@@ -194,9 +200,15 @@ Each `webhook` entry is selected for a job by two keys:
 - `type` — `build` for the per-package build pipelines, or `cleanup` for the daily repository-cleanup pipeline.
 - `when` — `on_success` or `on_failure`, selecting which job outcome the webhook fires on.
 
+Its endpoint is sourced from the credential named by its `secret` key (see
+[Secrets and Concourse credential management](#secrets-and-concourse-credential-management)), so the URL is never
+present in the configuration or the generated pipeline.
+
 This means a separate webhook entry is configured for each combination you want to be notified about (for example a
 success and a failure webhook for builds), which removes the need for any conditional logic inside the templates: each
-entry's message already applies to exactly one outcome.
+entry's message already applies to exactly one outcome. More than one webhook may share the same `type` and `when` to
+notify several endpoints; each is sent independently, and a webhook that cannot be reached does not prevent the others
+from being notified.
 
 The `template` body and the header `value` fields are pass-through strings in which shell-style variables are expanded
 by the notification task at run time. `aur-pipelines` does not otherwise interpret them; they are emitted into the

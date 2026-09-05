@@ -100,11 +100,10 @@
             "enum": ["on_success", "on_failure"],
             "description": "When selects which job outcome this webhook fires on: \"on_success\" or\n\"on_failure\"."
           },
-          "url": {
+          "secret": {
             "type": "string",
-            "minLength": 1,
-            "format": "uri",
-            "description": "URL is the endpoint the notification is sent to."
+            "pattern": "^[a-zA-Z0-9._-]+$",
+            "description": "Secret is the name of the credential holding this webhook's details.\nIt is used to build a Concourse credential-manager reference of the\nform \"((webhooks/\u003csecret\u003e.url))\", so each webhook has its own secret\n(with room for additional fields, such as authentication, in future)\nand no endpoint is exposed in the pipeline configuration."
           },
           "headers": {
             "items": {
@@ -134,7 +133,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": ["name", "type", "when", "url"],
+        "required": ["name", "type", "when", "secret"],
         "description": "Webhook describes a single notification endpoint invoked when a pipeline completes."
       },
       "type": "array",

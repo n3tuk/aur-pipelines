@@ -3,6 +3,7 @@ package generator
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/n3tuk/aur-pipelines/internal/config"
@@ -27,11 +28,13 @@ const (
 // invocation per webhook. It returns nil when no matching webhook is
 // configured.
 //
-// The notification variables (${PACKAGE_NAME}, ${PACKAGE_VERSION},
-// ${PIPELINE_STATUS}, ${PIPELINE_URL}, and — for cleanup — ${REPOSITORY}) are
-// computed by the task at run time and exported into the environment, so the
-// pass-through header values and body templates configured by the user are
-// expanded by the shell.
+// Each webhook's endpoint is sourced from its own credential
+// ("((webhooks/<secret>.url))") and exposed to the script as WEBHOOK_URL (or,
+// when several webhooks share the same type and outcome, WEBHOOK_URL_1,
+// WEBHOOK_URL_2, and so on). The notification variables (${PACKAGE_NAME},
+// ${PACKAGE_VERSION}, ${PIPELINE_STATUS}, ${PIPELINE_URL}, and — for cleanup —
+// ${REPOSITORY}) are computed by the task at run time, so the pass-through
+// header values and body templates are expanded by the shell.
 func (g *Generator) notifyStep(webhookType, when string) *pipeline.Step {
 	matching := g.matchingWebhooks(webhookType, when)
 	if len(matching) == 0 {
@@ -40,9 +43,14 @@ func (g *Generator) notifyStep(webhookType, when string) *pipeline.Step {
 
 	status := statusFor(when)
 
+	params := map[string]string{}
+	for index, webhook := range matching {
+		params[urlEnv(index, len(matching))] = webhookURLRef(webhook.Secret)
+	}
+
 	return &pipeline.Step{
 		Task:   "notify-" + status,
-		Params: map[string]string{"WEBHOOK_URL": secretWebhookURL},
+		Params: params,
 		Config: &pipeline.TaskConfig{
 			Platform: platformLinux,
 			ImageResource: &pipeline.ImageResource{
@@ -85,17 +93,40 @@ func statusFor(when string) string {
 	return "succeeded"
 }
 
+// webhookURLRef builds the Concourse credential-manager reference for a
+// webhook's URL from its secret name, of the form "((webhooks/<secret>.url))".
+func webhookURLRef(secret string) string {
+	return "((webhooks/" + secret + ".url))"
+}
+
+// urlEnv returns the environment-variable name carrying a webhook's URL. When
+// only one webhook matches, the name is unadorned; when several match, each is
+// suffixed with its (1-based) index to keep the names unique.
+func urlEnv(index, count int) string {
+	if count <= 1 {
+		return "WEBHOOK_URL"
+	}
+
+	return "WEBHOOK_URL_" + strconv.Itoa(index+1)
+}
+
 // notifyScript renders the notification shell script for the given webhook type
 // and status. It first exports the notification variables, then emits one curl
 // invocation per matching webhook.
+//
+// Notifications are best-effort: the script does not abort on the first
+// failure (no "set -e"/"pipefail"), and each curl invocation is guarded so that
+// a webhook that is unreachable neither prevents the remaining webhooks from
+// being sent nor fails the notification task. "set -u" is retained to catch
+// genuinely unset variables.
 func notifyScript(webhookType, status, repository string, webhooks []config.Webhook) string {
 	var builder strings.Builder
 
-	builder.WriteString("set -euo pipefail\n")
+	builder.WriteString("set -u\n")
 	builder.WriteString(exportBlock(webhookType, status, repository))
 
-	for _, webhook := range webhooks {
-		builder.WriteString(curlCommand(webhook))
+	for index, webhook := range webhooks {
+		builder.WriteString(curlCommand(webhook, index, len(webhooks)))
 		builder.WriteString("\n")
 	}
 
@@ -132,8 +163,9 @@ func exportBlock(webhookType, status, repository string) string {
 // placed on its own line using shell line-continuations, so the generated
 // script reads as a readable multi-line block. Header values and the body
 // template are placed inside double quotes so the shell expands the exported
-// notification variables; embedded double quotes are escaped.
-func curlCommand(webhook config.Webhook) string {
+// notification variables; embedded double quotes are escaped. The invocation is
+// guarded with "|| true" so a failed notification does not abort the others.
+func curlCommand(webhook config.Webhook, index, count int) string {
 	lines := []string{"curl --fail --silent --show-error"}
 
 	headers := append([]config.Header(nil), webhook.Headers...)
@@ -149,7 +181,7 @@ func curlCommand(webhook config.Webhook) string {
 		lines = append(lines, "--data "+dquote(webhook.Template))
 	}
 
-	lines = append(lines, `"${WEBHOOK_URL}"`)
+	lines = append(lines, `"${`+urlEnv(index, count)+`}" || true`)
 
 	// Join with a trailing backslash and newline so the command spans multiple
 	// lines; continuation lines are indented by two spaces for readability.

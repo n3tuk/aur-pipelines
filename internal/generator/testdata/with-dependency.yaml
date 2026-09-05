@@ -149,7 +149,7 @@ jobs:
     on_success:
       task: notify-succeeded
       params:
-        WEBHOOK_URL: ((webhook.url))
+        WEBHOOK_URL: ((webhooks/ntfy.url))
       config:
         platform: linux
         image_resource:
@@ -161,7 +161,7 @@ jobs:
           args:
             - -c
             - |-
-              set -euo pipefail
+              set -u
               export PIPELINE_STATUS="succeeded"
               export PIPELINE_URL="${ATC_EXTERNAL_URL}/teams/${BUILD_TEAM_NAME}/pipelines/${BUILD_PIPELINE_NAME}/jobs/${BUILD_JOB_NAME}/builds/${BUILD_NAME}"
               export PACKAGE_NAME="${BUILD_PIPELINE_NAME}"
@@ -170,11 +170,11 @@ jobs:
                 --header "Priority: low" \
                 --header "Title: ${PACKAGE_NAME} built" \
                 --data "Package ${PACKAGE_NAME} v${PACKAGE_VERSION} built. See ${PIPELINE_URL}." \
-                "${WEBHOOK_URL}"
+                "${WEBHOOK_URL}" || true
     on_failure:
       task: notify-failed
       params:
-        WEBHOOK_URL: ((webhook.url))
+        WEBHOOK_URL: ((webhooks/ntfy.url))
       config:
         platform: linux
         image_resource:
@@ -186,7 +186,7 @@ jobs:
           args:
             - -c
             - |-
-              set -euo pipefail
+              set -u
               export PIPELINE_STATUS="failed"
               export PIPELINE_URL="${ATC_EXTERNAL_URL}/teams/${BUILD_TEAM_NAME}/pipelines/${BUILD_PIPELINE_NAME}/jobs/${BUILD_JOB_NAME}/builds/${BUILD_NAME}"
               export PACKAGE_NAME="${BUILD_PIPELINE_NAME}"
@@ -194,4 +194,4 @@ jobs:
               curl --fail --silent --show-error \
                 --header "Title: ${PACKAGE_NAME} failed" \
                 --data "Package ${PACKAGE_NAME} failed. See ${PIPELINE_URL}." \
-                "${WEBHOOK_URL}"
+                "${WEBHOOK_URL}" || true

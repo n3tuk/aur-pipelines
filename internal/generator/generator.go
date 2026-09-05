@@ -43,7 +43,6 @@ const (
 	secretGPGPassphrase = "((gpg.signing-passphrase))" //nolint:gosec // credential-manager reference, not a secret
 	secretR2AccessKey   = "((r2.access-key-id))"       //nolint:gosec // credential-manager reference, not a secret
 	secretR2SecretKey   = "((r2.secret-access-key))"   //nolint:gosec // credential-manager reference, not a secret
-	secretWebhookURL    = "((webhook.url))"            //nolint:gosec // credential-manager reference, not a secret
 
 	// Job names used within every generated package pipeline.
 	jobBuildUpload = "build-upload"

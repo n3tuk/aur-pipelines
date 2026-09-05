@@ -68,8 +68,12 @@ type (
 		// When selects which job outcome this webhook fires on: "on_success" or
 		// "on_failure".
 		When string `json:"when" jsonschema:"required,enum=on_success,enum=on_failure" mapstructure:"when" yaml:"when"`
-		// URL is the endpoint the notification is sent to.
-		URL string `json:"url" jsonschema:"required,minLength=1,format=uri" mapstructure:"url" yaml:"url"`
+		// Secret is the name of the credential holding this webhook's details.
+		// It is used to build a Concourse credential-manager reference of the
+		// form "((webhooks/<secret>.url))", so each webhook has its own secret
+		// (with room for additional fields, such as authentication, in future)
+		// and no endpoint is exposed in the pipeline configuration.
+		Secret string `json:"secret" jsonschema:"required,pattern=^[a-zA-Z0-9._-]+$" mapstructure:"secret" yaml:"secret"`
 		// Headers is the ordered list of HTTP headers to send with the request.
 		Headers []Header `json:"headers,omitempty" mapstructure:"headers" yaml:"headers"`
 		// Template is the pass-through notification body template.

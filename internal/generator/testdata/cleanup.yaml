@@ -78,7 +78,7 @@ jobs:
     on_failure:
       task: notify-failed
       params:
-        WEBHOOK_URL: ((webhook.url))
+        WEBHOOK_URL: ((webhooks/ntfy.url))
       config:
         platform: linux
         image_resource:
@@ -90,11 +90,11 @@ jobs:
           args:
             - -c
             - |-
-              set -euo pipefail
+              set -u
               export PIPELINE_STATUS="failed"
               export PIPELINE_URL="${ATC_EXTERNAL_URL}/teams/${BUILD_TEAM_NAME}/pipelines/${BUILD_PIPELINE_NAME}/jobs/${BUILD_JOB_NAME}/builds/${BUILD_NAME}"
               export REPOSITORY="private"
               curl --fail --silent --show-error \
                 --header "Title: Cleanup of ${REPOSITORY} failed" \
                 --data "Cleanup failed. See ${PIPELINE_URL}." \
-                "${WEBHOOK_URL}"
+                "${WEBHOOK_URL}" || true

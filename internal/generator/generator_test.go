@@ -18,8 +18,8 @@ const (
 	baseLibDep  = "libdep"
 	imageArch   = "archlinux"
 	tagDevel    = "base-devel"
-	webhookURL  = "https://ntfy.sh/example"
 	headerTitle = "Title"
+	secretNtfy  = "ntfy"
 )
 
 // update, when set via `go test -update`, rewrites the golden files instead of
@@ -38,10 +38,10 @@ func testConfig() *config.Config {
 		Bucket: config.Bucket{Name: "my-bucket", Repository: "private"},
 		Webhooks: []config.Webhook{
 			{
-				Name: "ntfy-success",
-				Type: config.WebhookTypeBuild,
-				When: config.WebhookWhenSuccess,
-				URL:  webhookURL,
+				Name:   "ntfy-success",
+				Type:   config.WebhookTypeBuild,
+				When:   config.WebhookWhenSuccess,
+				Secret: secretNtfy,
 				Headers: []config.Header{
 					{Name: headerTitle, Value: "${PACKAGE_NAME} built"},
 					{Name: "Priority", Value: "low"},
@@ -49,20 +49,20 @@ func testConfig() *config.Config {
 				Template: `Package ${PACKAGE_NAME} v${PACKAGE_VERSION} built. See ${PIPELINE_URL}.`,
 			},
 			{
-				Name: "ntfy-failure",
-				Type: config.WebhookTypeBuild,
-				When: config.WebhookWhenFailure,
-				URL:  webhookURL,
+				Name:   "ntfy-failure",
+				Type:   config.WebhookTypeBuild,
+				When:   config.WebhookWhenFailure,
+				Secret: secretNtfy,
 				Headers: []config.Header{
 					{Name: headerTitle, Value: "${PACKAGE_NAME} failed"},
 				},
 				Template: `Package ${PACKAGE_NAME} failed. See ${PIPELINE_URL}.`,
 			},
 			{
-				Name: "ntfy-cleanup",
-				Type: config.WebhookTypeCleanup,
-				When: config.WebhookWhenFailure,
-				URL:  webhookURL,
+				Name:   "ntfy-cleanup",
+				Type:   config.WebhookTypeCleanup,
+				When:   config.WebhookWhenFailure,
+				Secret: secretNtfy,
 				Headers: []config.Header{
 					{Name: headerTitle, Value: "Cleanup of ${REPOSITORY} failed"},
 				},
@@ -246,7 +246,7 @@ func TestSecretsAreCredentialReferences(t *testing.T) {
 		"((gpg.signing-passphrase))",
 		"((r2.access-key-id))",
 		"((r2.secret-access-key))",
-		"((webhook.url))",
+		"((webhooks/ntfy.url))",
 	} {
 		if !strings.Contains(got, secret) {
 			t.Errorf("expected credential reference %q in pipeline", secret)
@@ -288,5 +288,55 @@ func TestBuildAndFailureNotificationsAreSeparate(t *testing.T) {
 
 	if !strings.Contains(got, "task: notify-failed") {
 		t.Errorf("expected an on_failure notify task:\n%s", got)
+	}
+}
+
+func TestMultipleWebhooksSameTypeAndWhen(t *testing.T) {
+	t.Parallel()
+
+	cfg := testConfig()
+	// Two build/on_success webhooks with distinct secrets.
+	cfg.Webhooks = []config.Webhook{
+		{
+			Name: "primary", Type: config.WebhookTypeBuild, When: config.WebhookWhenSuccess,
+			Secret: "primary", Template: "built ${PACKAGE_NAME}",
+		},
+		{
+			Name: "secondary", Type: config.WebhookTypeBuild, When: config.WebhookWhenSuccess,
+			Secret: "secondary", Template: "also built ${PACKAGE_NAME}",
+		},
+	}
+
+	result := &resolver.Result{PackageBases: []string{baseKalcBin}}
+	got := generatePipeline(t, cfg, result, baseKalcBin)
+
+	// Each webhook must get its own indexed URL variable, sourced from its own
+	// secret.
+	for _, want := range []string{
+		"WEBHOOK_URL_1: ((webhooks/primary.url))",
+		"WEBHOOK_URL_2: ((webhooks/secondary.url))",
+		`"${WEBHOOK_URL_1}" || true`,
+		`"${WEBHOOK_URL_2}" || true`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("multi-webhook output missing %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestNotificationIsBestEffort(t *testing.T) {
+	t.Parallel()
+
+	result := &resolver.Result{PackageBases: []string{baseKalcBin}}
+	got := generatePipeline(t, testConfig(), result, baseKalcBin)
+
+	// The notify script must not abort on the first failure, and each curl must
+	// be guarded so one failure does not suppress the others.
+	if strings.Contains(got, "set -euo pipefail\n              export PIPELINE_STATUS") {
+		t.Errorf("notify script should not use set -e/pipefail (best-effort):\n%s", got)
+	}
+
+	if !strings.Contains(got, `|| true`) {
+		t.Errorf("notify curl should be guarded with || true:\n%s", got)
 	}
 }
