@@ -1,0 +1,113 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: 3
+
+tasks:
+  check-jsonschema:
+    desc: Validate the schema of YAML files in the repository
+    summary: |-
+      Validate the layout and content of the YAML files in this repository using the JSON Schema files, including:
+
+      - Taskfiles (Taskfile.yaml, .taskfiles/*.yaml);
+      - GitHub Dependabot configuration (.github/dependabot.yaml)
+      - GitHub Workflows (.github/workflows/*.yaml)
+      - pre-commit Configuration (.pre-commit-config.yaml)
+      - CodeCov Configuration (.codecov.yml)
+      - Mergify Configuration (.github/mergify.yaml)
+    silent: true
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - task: check-jsonschema:taskfiles
+      - task: checj-jsonschema:dependabot
+      - task: check-jsonschema:workflows
+      - task: check-jsonschema:pre-commit
+      - task: check-jsonschema:codecov
+      - task: check-jsonschema:mergify
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+
+  check-jsonschema:taskfiles:
+    desc: Validate the schema of all Taskfiles
+    sources:
+      - Taskfile.yaml
+      - .task/*.yaml
+    silent: true
+    deps:
+      - task: check:exec:check-jsonschema
+      - task: yamllint
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: check-jsonschema --output-format text --builtin-schema vendor.taskfile Taskfile.yaml .task/*.yaml
+      - cmd: echo -e '\e[0;32mPassed\e[0m'
+
+  check-jsonschema:dependabot:
+    desc: Validate the schema of the GitHub Dependabot configuration
+    sources:
+      - .github/dependabot.yaml
+    silent: true
+    deps:
+      - task: check:exec:check-jsonschema
+      - task: yamllint
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - if: test -f .github/dependabot.yaml
+        cmd: check-jsonschema --output-format text --builtin-schema vendor.dependabot .github/dependabot.yaml
+      - cmd: echo -e '\e[0;32mPassed\e[0m'
+
+  check-jsonschema:workflows:
+    desc: Validate the schema of the GitHub Workflows
+    sources:
+      - .github/workflows/*.yaml
+    silent: true
+    deps:
+      - task: check:exec:check-jsonschema
+      - task: yamllint
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - if: find .github/workflows -type f -iname '*.yaml' >/dev/null 2>&1
+        cmd: check-jsonschema --output-format text --builtin-schema vendor.github-workflows .github/workflows/*.yaml
+      - cmd: echo -e '\e[0;32mPassed\e[0m'
+
+  check-jsonschema:pre-commit:
+    desc: Validate the schema of the pre-commit configuration
+    sources:
+      - .pre-commit-config.yaml
+    silent: true
+    deps:
+      - task: check:exec:check-jsonschema
+      - task: yamllint
+    env:
+      schemafile: https://www.schemastore.org/pre-commit-config.json
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - if: "[ -f .pre-commit-config.yaml ]"
+        cmd: check-jsonschema --output-format text --schemafile {{ .schemafile }} .pre-commit-config.yaml
+      - cmd: echo -e '\e[0;32mPassed\e[0m'
+
+  check-jsonschema:codecov:
+    desc: Validate the schema of the CodeCov configuration
+    sources:
+      - .codecov.yml
+    silent: true
+    deps:
+      - task: check:exec:check-jsonschema
+      - task: yamllint
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - if: test -f .codecov.yml
+        cmd: check-jsonschema --output-format text --builtin-schema vendor.codecov .codecov.yml
+      - cmd: echo -e '\e[0;32mPassed\e[0m'
+
+  check-jsonschema:mergify:
+    desc: Validate the schema of the Mergify configuration
+    sources:
+      - .github/mergify.yml
+    silent: true
+    deps:
+      - task: check:exec:check-jsonschema
+      - task: yamllint
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - if: test -f .github/mergify.yml
+        cmd: check-jsonschema --output-format text --builtin-schema vendor.mergify .github/mergify.yml
+      - cmd: echo -e '\e[0;32mPassed\e[0m'

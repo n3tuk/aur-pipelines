@@ -1,0 +1,49 @@
+# This is the parent configuration within this repository
+root = true
+
+[*]
+charset = utf-8
+max_line_length = 120
+# Always use with unix-based endings and ensure all files have a new-line only at the end of the file (this can
+# occasionally cause issues with some file processing if not present)
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+# Prefer space-based indentations
+indent_style = space
+indent_size = 2
+tab_width = 2
+
+[*.go]
+indent_style = tab
+indent_size = 2
+
+[go.{mod,work,work.sum,sum}]
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset
+
+[*.md]
+indent_size = unset
+
+[*.yaml]
+quote_type = double
+
+[.github/release-drafter.yaml]
+# The release-drafter configuration has some complex regular expression strings within it that are easier to read and
+# manage with single quotes, so allow single quotes for this file to improve readability.
+quote_type = single
+
+[Dockerfile]
+indent_style = tab
+indent_size = 4
+
+[{.gitignore,.gitattributes}]
+indent_style = tab
+indent_size = 4
+
+[COMMIT_EDITMSG]
+max_line_length = 72

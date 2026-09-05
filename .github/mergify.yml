@@ -1,0 +1,37 @@
+---
+# yamllint disable rule:line-length
+# yaml-language-server: $schema=https://raw.githubusercontent.com/mergifyio/docs/main/public/mergify-configuration-schema.json
+
+pull_request_rules:
+  # If the pull request was raised by Dependabot, and only Dependabot or GitHub
+  # Actions have make changes to the branch, then automatically approve if it's
+  # not in conflict with the base branch, and not closed.
+  - name: Automatic approval for Dependabot pull requests
+    conditions:
+      - author=dependabot[bot]
+      - base=main
+      - "#commits-behind=0"
+      - -conflict
+      - -closed
+      - or:
+          - commits[*].author==dependabot[bot]
+          - commits[*].author==github-actions[bot]
+    actions:
+      review:
+        type: APPROVE
+
+  # If the pull request was raised by Dependabot, it only has a linear history,
+  # it has been approved for merging into the main branch, and is neither in
+  # conflict with the main branch, nor fallen behind, then automatically merge
+  # this request.
+  - name: Automatic merge for Dependabot pull requests
+    conditions:
+      - author=dependabot[bot]
+      - base=main
+      - linear-history
+      - "#approved-reviews-by>=1"
+      - -conflict
+      - -closed
+    actions:
+      merge:
+        method: rebase

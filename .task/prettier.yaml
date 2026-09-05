@@ -1,0 +1,57 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: 3
+
+tasks:
+  prettier:
+    desc: Run Prettier for all supported files
+    summary: |-
+      Run Prettier for all supported files, including Markdown, YAML, JSON and TOML files, in order to ensure they are
+      correct, structured and that they are consistent in their layout and usage, minimising whitespace changes.
+    sources:
+      - "**/*.md"
+      - "**/*.yml"
+      - "**/*.yaml"
+      - "**/*.json"
+      - "**/*.toml"
+      - .*.md
+      - .*.yml
+      - .*.yaml
+      - .*.json
+      - .*.toml
+      - .*/**/*.md
+      - .*/**/*.yml
+      - .*/**/*.yaml
+      - .*/**/*.json
+      - .*/**/*.toml
+      - .snyk
+      - "{{ .ROOT_DIR }}/.prettierrc.yaml"
+      - "{{ .ROOT_DIR }}/.prettierignore"
+      - "{{ .ROOT_DIR }}/.gitignore"
+      # Ignore the CodeQL cache
+      - exclude: .codeql/**
+    vars:
+      files:
+        sh: |-
+          ( find . -type f \
+              -not -path './.codeql/*' \
+              -and \( -iname '*.md' -or -iname '*.yml' -or -iname '*.yaml' -or -iname '*.json' -or -iname '.snyk' \) \
+              -print 2>/dev/null \
+            | sed 's|^\./||' | paste -sd' ' - ) || echo 'README.md'
+    silent: true
+    deps:
+      - task: check:exec:prettier
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: prettier --log-level log --write --cache --cache-location .prettiercache {{ .files }}
+      - cmd: echo -e '\e[0;32mPassed\e[0m'
+
+  prettier:clean:
+    desc: Clean the Prettier cache
+    silent: true
+    run: once
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: rm -f .prettiercache
+      - cmd: echo -e '\e[0;32mPassed\e[0m'

@@ -1,0 +1,23 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: 3
+
+tasks:
+  pre-commit:install:
+    internal: true
+    desc: Enable the pre-commit hook for this repository
+    summary: >-
+      Enable the pre-commit hook in this repository to ensure that all the required checks are run before committing
+      staged changes back upstream
+    run: once
+    deps:
+      - task: check:exec:pre-commit
+    silent: true
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: pre-commit install --allow-missing-config >/dev/null 2>&1
+    generates:
+      - "{{ .ROOT_DIR }}/.git/hooks/pre-commit"
+    status:
+      - test -f '{{ .ROOT_DIR }}/.git/hooks/pre-commit'

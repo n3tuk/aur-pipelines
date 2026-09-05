@@ -1,0 +1,66 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/dependabot-2.0.json
+
+version: 2
+
+updates:
+  - package-ecosystem: pre-commit
+    ignore:
+      - dependency-name: https://github.com/pre-commit/mirrors-prettier.git
+        # This repository is deprecated and archived, and ideally the latest version we should be using is the one
+        # configured, so ignore all updates to the next major release to prevent bad update from being raised.
+        update-types:
+          - version-update:semver-major
+    directory: .
+    schedule:
+      interval: daily
+      # yamllint disable-line rule:quoted-strings
+      time: "18:30"
+      timezone: Europe/London
+    cooldown:
+      # Wait for five days before applying any update to allow time for any issues to be raised with the update, and for
+      # any fixes to be applied, before applying the update to this repository.
+      default-days: 5
+    commit-message:
+      prefix: chore(pre-commit)
+    labels:
+      - type/dependencies
+      - update/configuration
+      - release/chore
+
+  - package-ecosystem: gomod
+    directory: .
+    schedule:
+      interval: daily
+      # yamllint disable-line rule:quoted-strings
+      time: "18:45"
+      timezone: Europe/London
+    cooldown:
+      default-days: 5
+    commit-message:
+      prefix: chore(go)
+    labels:
+      - type/dependencies
+      - update/go
+      - release/chore
+
+  - package-ecosystem: github-actions
+    directory: .
+    schedule:
+      interval: daily
+      # yamllint disable-line rule:quoted-strings
+      time: "19:00"
+      timezone: Europe/London
+    cooldown:
+      default-days: 5
+      exclude:
+        # Set an override for any private GitHub Actions from the cooldown period and allow those to be updated
+        # immediately once released
+        - jonathanio/*
+        - n3tuk/*
+    commit-message:
+      prefix: chore(actions)
+    labels:
+      - type/dependencies
+      - update/actions
+      - release/chore

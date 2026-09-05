@@ -1,0 +1,21 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: 3
+
+tasks:
+  snyk:
+    desc: Run Snyk checks for Terraform misconfigurations
+    summary: |-
+      Run Snyk for the Terraform configuration to identify any potential misconfigurations and security issues within
+      the code.
+    sources:
+      - terraform/*.tf
+      - terraform/*.tfvars
+    silent: true
+    deps:
+      - task: check:exec:snyk
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: echo "Snyk is not yet configured; skipping."
+      - cmd: echo -e '\e[0;33mSkipped\e[0m'

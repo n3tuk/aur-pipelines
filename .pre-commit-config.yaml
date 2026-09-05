@@ -1,0 +1,90 @@
+---
+# yamllint disable-line rule:line-length
+# yaml-language-server: $schema=https://www.schemastore.org/pre-commit-config.json
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks.git
+    rev: v6.0.0
+    hooks:
+      - id: no-commit-to-branch
+        name: Check this commit is not to the main/master branch
+      - id: check-merge-conflict
+        name: Check for merge conflicts before committing
+      - id: check-case-conflict
+        name: Check for case conflicts for case-sensitive filesystems
+      - id: check-symlinks
+        name: Check for broken syslinks in the repository
+      - id: destroyed-symlinks
+        name: Check for destroyed symlinks in the repository
+      - id: check-added-large-files
+        name: Check no large files have been added to the commit
+      - id: trailing-whitespace
+        name: Check all trailing whitespace is removed
+      - id: end-of-file-fixer
+        name: Check all files end in a new-line only
+
+  - repo: https://github.com/zricethezav/gitleaks.git
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+        name: Check for hard-coded secrets, keys, and credentials
+
+  # Formatting
+  - repo: https://github.com/pre-commit/mirrors-prettier.git
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        name: Lint selected files with Prettier
+        args:
+          - --config=.prettierrc.yaml
+        additional_dependencies:
+          - prettier@3.8.3
+        types_or:
+          - markdown
+          - json
+          - yaml
+
+  # Linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli.git
+    rev: v0.48.0
+    hooks:
+      - id: markdownlint
+        name: Check general Markdown correctness and formatting
+        args:
+          - --config
+          - .markdownlint.yaml
+          - --ignore-path
+          - .markdownignore
+
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.38.0
+    hooks:
+      - name: Lint YAML files with yamllint
+        id: yamllint
+        args:
+          - --config-file
+          - .yamllint.yaml
+
+  # Schema Validation
+  - repo: https://github.com/python-jsonschema/check-jsonschema.git
+    rev: 0.37.1
+    hooks:
+      - name: Check the Taskfiles for correctness
+        id: check-taskfile
+      - name: Check Dependabot configuration for correctness
+        id: check-dependabot
+      - name: Check GitHub Workflows for correctness
+        id: check-github-workflows
+
+  # Static Analysis
+  - repo: https://github.com/rhysd/actionlint.git
+    rev: v1.7.12
+    hooks:
+      - name: Lint all GitHub Workflows with actionlint
+        id: actionlint-system
+
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit.git
+    rev: v1.24.1
+    hooks:
+      - name: Check GitHub Workflows for security issues with zizmor
+        id: zizmor

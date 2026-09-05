@@ -1,0 +1,148 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: 3
+
+output: prefixed
+interval: 5s
+
+vars:
+  bin: aur-pipelines
+
+set:
+  - pipefail
+
+includes:
+  utils:
+    taskfile: .task/utils.yaml
+    flatten: true
+  prettier:
+    taskfile: .task/prettier.yaml
+    flatten: true
+  markdownlint:
+    taskfile: .task/markdownlint.yaml
+    flatten: true
+  check-jsonschema:
+    taskfile: .task/check-jsonschema.yaml
+    flatten: true
+  yamllint:
+    taskfile: .task/yamllint.yaml
+    flatten: true
+  go:
+    taskfile: .task/go.yaml
+    flatten: true
+  snyk:
+    taskfile: .task/snyk.yaml
+    flatten: true
+  zizmor:
+    taskfile: .task/zizmor.yaml
+    flatten: true
+  actionlint:
+    taskfile: .task/actionlint.yaml
+    flatten: true
+  pre-commit:
+    taskfile: .task/pre-commit.yaml
+    flatten: true
+
+tasks:
+  default:
+    desc: Run the development and integration tasks
+    summary: |-
+      Run the linting, formatting, validation, integration, analysis, and documentation tasks for all Terraform
+      configurations and associated files. Use the following command for additional information on the steps involved:
+
+        $ task --summary develop
+    silent: true
+    cmds:
+      - task: develop
+
+  develop:
+    aliases:
+      - d
+      - dev
+    desc: Run the development and integration tasks
+    summary: |-
+      Run the linting, formatting, validation, integration, analysis, and documentation tasks for all Terraform
+      configurations and associated files.
+
+      The `develop` task is designed to run the core integration steps for this repository (and can do so continuously
+      when using the `--watch` option). It is designed to be run during development to ensure that any changes made to
+      the code are valid, correctly formatted, and do not introduce any security issues or misconfigurations.
+
+      Specifically, it will format and lint all supported files, validate files, build, test, run static code analysis
+      tools, and keep the documentation up-to-date, where it is automated.
+    silent: true
+    deps:
+      - task: pre-commit:install
+      - task: go:healthcheck
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - task: lint
+      - task: test
+      - task: build
+      - task: analyse
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+
+  lint:
+    desc: Check linting of Go, JSON, YAML, and Markdown files
+    summary: |
+      Run linting checks across all Go, YAML, and Markdown files to find any potential issues or inconsistencies within
+      the code.
+    silent: true
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - task: go:lint
+      - task: prettier
+      - task: markdownlint
+      - task: yamllint
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+
+  test:
+    desc: Run the unit tests
+    summary: |
+      Run the unit and integration tests for the Go application.
+    silent: true
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - task: go:test
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+
+  analyse:
+    desc: Run static code analysis and security analysis tools
+    summary: >-
+      Run static code analysis and security analysis tools against the Go application, as well as some repository
+      configuration files, to identify any potential code issues or security weaknesses within the code.
+    silent: true
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - task: check-jsonschema
+      - task: actionlint
+      - task: zizmor
+      - task: snyk
+      - task: go:codeql
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+
+  build:
+    desc: Locally build the application
+    summary: |-
+      Locally build the application binary for the testing and local development of the Lambda function with a temporary
+      version number based on the local commit and file contents, as well as the Helm Chart for deployment.
+    silent: true
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - task: go:build
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+
+  clean:
+    desc: Clean temporary directories and files from this function
+    summary: |-
+      Clean any temporary directories and files created by, or for, this Go application, as well as this Taskfile, and
+      the tools and applications called from it.
+    run: once
+    silent: true
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - task: go:clean
+      - task: prettier:clean
+      - cmd: rm -rf .task/checksum
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'

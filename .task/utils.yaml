@@ -1,0 +1,23 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: 3
+
+tasks:
+  check:exec:*:
+    internal: true
+    label: '{{ trimSuffix ":*" .TASK }}:{{ default "{...}" (index .MATCH 0) }}'
+    prefix: '{{ trimSuffix ":*" .TASK }}:{{ default "{...}" (index .MATCH 0) }}'
+    desc: Check for a specific executable in $PATH
+    summary: >-
+      Check for a specific executable to ensure it's available within $PATH before running any further tasks and
+      commands.
+    run: once
+    silent: true
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: |-
+          if ! command -v '{{ index .MATCH 0 }}' >/dev/null 2>&1; then
+            echo -e '\e[1;31mFATAL: Cannot find `{{ index .MATCH 0 }}` in $PATH.\e[0m'
+            exit 1
+          fi

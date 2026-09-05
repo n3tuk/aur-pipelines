@@ -1,0 +1,33 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: 3
+
+tasks:
+  markdownlint:
+    desc: Run markdownlint for all Markdown files
+    summary: |-
+      Run markdownlint for all Markdown files to ensure that they adhere to the defined style and formatting rules, and
+      to catch any potential syntax errors or misconfigurations, or erroneous whitespace.
+    sources:
+      - "**/*.md"
+      - .*.md
+      - .*/**/*.md
+      - "{{ .ROOT_DIR }}/.markdownlint.yaml"
+      - "{{ .ROOT_DIR }}/.markdownignore"
+      # Ignore the CodeQL cache
+      - exclude: .codeql/**
+    vars:
+      files:
+        sh: |-
+          ( find . -type f -not -path './.codeql/*' -and -iname '*.md' -print 2>/dev/null \
+            | sed 's|^\./||' | paste -sd' ' - ) || true
+    silent: true
+    deps:
+      - task: check:exec:markdownlint
+      - task: prettier
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{end}}"
+      - if: '{{ ne .files "" }}'
+        cmd: markdownlint --config .markdownlint.yaml --ignore-path .markdownignore {{ .files }}
+      - cmd: echo -e '\e[0;32mPassed\e[0m'

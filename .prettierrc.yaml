@@ -1,0 +1,25 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/prettierrc.json
+
+printWidth: 120
+proseWrap: always
+quoteProps: as-needed
+objectWrap: preserve
+singleQuote: false
+bracketSpacing: true
+trailingComma: es5
+semi: false
+embeddedLanguageFormatting: auto
+
+overrides:
+  - files: .snyk
+    options:
+      parser: yaml
+  - files: .github/release-drafter.yaml
+    options:
+      proseWrap: preserve
+      # The release-drafter configuration has some complex regular expression strings within it that are easier to read
+      # and manage with single quotes, so allow single quotes for this file and allow consistent formatting, so some
+      # strings can be quoted without being necessary to improve readability.
+      singleQuote: true
+      quoteProps: consistent

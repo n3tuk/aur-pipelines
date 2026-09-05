@@ -1,0 +1,105 @@
+---
+# yaml-language-server: $schema=https://golangci-lint.run/jsonschema/golangci.jsonschema.json
+
+version: "2"
+
+linters:
+  default: all
+  disable:
+    - exhaustruct
+    - gomodguard
+    - mnd
+    - tagliatelle
+    - varnamelen
+    - wsl
+  enable:
+    - gomodguard_v2
+  settings:
+    cyclop:
+      max-complexity: 15
+      package-average: 10
+    depguard:
+      rules:
+        internal:
+          files:
+            - "**/internal/**/*.go"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/n3tuk/aur-pipelines
+            - github.com/Masterminds/sprig/v3
+            - github.com/go-git/go-git/v5
+            - github.com/go-git/go-billy/v5
+            - github.com/spf13/viper
+            - github.com/santhosh-tekuri/jsonschema/v6
+        cmd:
+          files:
+            - "**/cmd/**/*.go"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/n3tuk/aur-pipelines
+            - github.com/spf13/cobra
+            - github.com/spf13/viper
+    godox:
+      keywords:
+        - WARN
+        - CRIT
+    misspell:
+      locale: UK
+    nolintlint:
+      allow-unused: false
+      require-explanation: true
+      require-specific: true
+    decorder:
+      disable-dec-order-check: false
+      disable-init-func-first-check: false
+      disable-dec-num-check: false
+    dogsled:
+      max-blank-identifiers: 1
+    errchkjson:
+      check-error-free-encoding: true
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - err113
+          - funlen
+          - wrapcheck
+        path: _test\.go$
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/n3tuk)
+        - localmodule
+        - alias
+        - blank
+      custom-order: true
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

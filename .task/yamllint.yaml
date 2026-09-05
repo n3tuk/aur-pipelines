@@ -1,0 +1,37 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: 3
+
+tasks:
+  yamllint:
+    internal: false
+    desc: Run yamllint for all YAML files
+    summary: |-
+      Run yamllint for all YAML files to ensure that they adhere to the defined style and formatting rules, and to catch
+      any potential syntax errors or misconfigurations, or erroneous whitespace.
+    sources:
+      - "**/*.yml"
+      - "**/*.yaml"
+      - .*.yml
+      - .*.yaml
+      - .*/**/*.yml
+      - .*/**/*.yaml
+      - "{{ .ROOT_DIR }}/.yamllint.yaml"
+      # Ignore the CodeQL cache
+      - exclude: .codeql/**
+    vars:
+      files:
+        sh: |-
+          ( find . -type f \
+              -not -path './.codeql/*' -and \( -iname '*.yml' -or -iname '*.yaml' \) -print 2>/dev/null \
+            | sed 's|^\./||' | paste -sd' ' - ) || true
+    deps:
+      - task: check:exec:yamllint
+      - task: prettier
+    silent: true
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - if: '{{ ne .files "" }}'
+        cmd: yamllint --config-file .yamllint.yaml {{ .files }}
+      - cmd: echo -e '\e[0;32mPassed\e[0m'

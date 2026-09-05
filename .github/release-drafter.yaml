@@ -1,0 +1,114 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/release-drafter/release-drafter/master/schema.json
+
+# yamllint disable rule:line-length
+# yamllint disable rule:quoted-strings
+
+# Set the name and tag of the release, which will be prefixed with the letter v, and just point to the resolved version.
+name-template: v$RESOLVED_VERSION
+tag-template: v$RESOLVED_VERSION
+
+# Change the template of the categories to use the third-level heading, instead of the second-level, to make it slightly
+# smaller in the release notes.
+category-template: '### $TITLE'
+
+# For each change, just used the title and the pull request number; skip adding the author of the pull request.
+# Individual users will be shown through the contributors section at the end, so they will still be recognised.
+change-template: '- $TITLE ([#$NUMBER]($URL))'
+
+# Update the overall template with the structure we want for our release notes, which includes an optional section at
+# the top for an overview of the changes and/or purpose of the release.
+template: |-
+  ## Changes
+
+  (Override this block with an overview of the changes and/or purpose of this release, which can then be shown at the top of these release notes. If not required, this paragraph should be removed before publishing the release.)
+
+  $CHANGES
+
+  ### Notes
+
+  View the full set of code and configuration changes made in this release by comparing [`$PREVIOUS_TAG` and `v$RESOLVED_VERSION`](https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION).
+
+  #### Contributors
+
+  $CONTRIBUTORS
+
+# If there are no changes found (i.e. all the pull requests merged since the last release have the `release/skip`
+# label), then use this template instead, which just shows a message that there are no changes in this release.
+no-changes-template: |-
+  ## Changes
+
+  No changes are in this release.
+
+  ### Notes
+
+  View the full set of code and configuration changes made in this release by comparing [`$PREVIOUS_TAG` and `$RESOLVED_VERSION`](https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...$RESOLVED_VERSION).
+
+# Set the following characters to be escaped in the release notes so they do not accidentally get interpreted as
+# markdown formatting. We will not escape @ nor the backticks to allow for mentions and inline code formatting.
+change-title-escapes: \<*_&
+
+# Define the categories to group the pull requests into, how each group is expected to increment the version of the
+# release, and the labels that will be used to determine which category a pull request belongs to.
+categories:
+  - title: Breaking Changes 🚨
+    type: changelog
+    semver-increment: major
+    when:
+      labels:
+        - release/breaking
+    exclusive: true
+  - title: Features & Updates
+    type: changelog
+    semver-increment: minor
+    when:
+      labels:
+        - release/feature
+        - release/update
+    exclusive: true
+  # Override the version resolver for the release/update label to treat it as a patch. As this is specifically a
+  # version-resolver type change, the exclusive setting above will not override this change.
+  - type: version-resolver
+    semver-increment: patch
+    when:
+      labels:
+        - release/update
+    exclusive: true
+  - title: Bug Fixes
+    type: changelog
+    semver-increment: patch
+    when:
+      labels:
+        - release/fix
+    exclusive: true
+  - title: Maintenance
+    type: changelog
+    semver-increment: patch
+    when:
+      labels:
+        - release/chore
+    exclusive: true
+    # Depending on how long it is between releases, there may be a large number of pull requests that fall into the
+    # maintenance category, which can make the release notes more difficult to read, so collapse after the first 3.
+    collapse-after: 3
+
+  # Not all pull requests may need to be included in the release notes, so specify this label to allow some to be
+  # excluded where necessary.
+  - type: pre-exclude
+    when:
+      label: release/skip
+
+# Exclude automated dependency and documentation bots from the contributors list, as they should not be making
+# significant changes.
+exclude-contributors:
+  - renovate
+  - renovate[bot]
+
+# Create a set of replacers which at on the changelog body to replace any matching text with the specified replacement
+# text, which is used to add links, or reformat standardised pull request titles, to make the release notes more
+# readable and useful.
+replacers:
+  - search: '/CVE-(\d{4})-(\d+)/g'
+    replace: '[CVE-$1-$2](https://github.com/advisories?query=CVE-$1-$2)'
+  - search: '/GHSA-([a-z0-9]{4})-([a-z0-9]{4})-([a-z0-9]{4})/g'
+    replace: '[GHSA-$1-$2](https://github.com/advisories?query=GHSA-$1-$2-$3)'

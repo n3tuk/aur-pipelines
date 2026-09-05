@@ -1,0 +1,22 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: 3
+
+tasks:
+  actionlint:
+    desc: Lint the GitHub Workflows with actionlint
+    summary: |-
+      Run actionlint against the GitHub Workflows to identify any potential control flow weaknesses and GitHub runner
+      incompatibilities.
+    sources:
+      - .github/workflows/*.yaml
+      - .gitub/actionlint.yaml
+    silent: true
+    deps:
+      - task: check:exec:actionlint
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - if: find .github/workflows -type f -name '*.yaml' >dev/null 2>&1
+        cmd: actionlint -config-file .actionlint.yaml -no-color .github/workflows/*.yaml
+      - cmd: echo -e '\e[0;32mPassed\e[0m'

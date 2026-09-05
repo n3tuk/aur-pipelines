@@ -1,0 +1,75 @@
+---
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+
+name: Draft Release
+run-name: >-
+  Building draft GitHub Release for ${{ github.sha }}
+
+concurrency:
+  group: ${{ github.repository }}:draft-release
+  # All releases are created from scratch, so we can terminate mid-process
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+
+# No permissions by default
+permissions: {}
+
+jobs:
+  draft-release:
+    name: Draft the Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create a release
+      pull-requests: read # read the pull requests to build release
+    outputs:
+      release-id: ${{ steps.release-drafter.outputs.release-id }}
+      release-url: ${{ steps.release-drafter.outputs.release-url }}
+      release-tag: ${{ steps.release-drafter.outputs.release-tag }}
+
+    steps:
+      - name: Checkout the Repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Draft the release
+        id: release-drafter
+        # yamllint disable-line rule:line-length
+        uses: release-drafter/release-drafter@5de93583980a40bd78603b6dfdcda5b4df377b32 # v7.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          config-name: release-drafter.yaml
+
+      # NOTE: We might need to keep awareness if the tag allows downstream
+      #       implementations of this application to trigger their own updates
+      #       via Dependabot or similar. If so, we should explore alternatives
+      #       to force-pushing the tag on every merge to main.
+
+      - name: Set the release tag
+        # Force-push the release tag (e.g. v1.2.0) to the current commit so
+        # that release.yaml is automatically triggered without any manual step.
+        # The tag must move on every merge until the release is published; the
+        # force push is safe because a draft release is never immutable.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ steps.release-drafter.outputs.tag_name }}
+        run: |
+          if gh api --method PATCH \
+            "/repos/${GITHUB_REPOSITORY}/git/refs/tags/${RELEASE_TAG}" \
+            --field sha="${RELEASE_SHA}" \
+            --field force=true > /dev/null 2>&1; then
+            echo "Moved tag ${RELEASE_TAG} to ${RELEASE_SHA}"
+          else
+            gh api --method POST \
+              "/repos/${GITHUB_REPOSITORY}/git/refs" \
+              --field ref="refs/tags/${RELEASE_TAG}" \
+              --field sha="${RELEASE_SHA}"
+            echo "Created tag ${RELEASE_TAG} at ${RELEASE_SHA}"
+          fi

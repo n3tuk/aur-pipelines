@@ -1,0 +1,210 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: 3
+
+tasks:
+  go:healthcheck:
+    desc: Check that the GoReleaser environment is valid
+    summary: |-
+      Run checks on both the local development or build environment to ensure that everything required is present, and
+      also run a check on the GoReleaser configuration itself to ensure that it is valid.
+    run: once
+    internal: true
+    silent: true
+    sources:
+      - .goreleaser.yaml
+    deps:
+      - task: check:exec:goreleaser
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: goreleaser healthcheck
+      - cmd: goreleaser check
+      - cmd: echo -e '\e[0;32mPassed\e[0m'
+
+  go:dirs:
+    desc: Create the required directories for building/testing
+    summary: |-
+      Create any required directories needed as part of building and/or testing of the Go application, both locally, and
+      within the integration pipeline.
+    run: once
+    internal: true
+    silent: true
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: mkdir -p bin dist coverage/{unit,integration}
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+    status:
+      - test -d bin
+      - test -d dist
+      - test -d coverage/unit
+      - test -d coverage/integration
+
+  go:modules:
+    desc: Prepare the Go modules
+    summary: |-
+      Ensure that the local copies of any defined modules are kept up-to-date with those configured in this Go
+      application.
+    silent: true
+    sources:
+      - go.mod
+      - go.sum
+    deps:
+      - task: check:exec:go
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: go mod download
+      - cmd: go mod tidy
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+
+  go:build:
+    aliases:
+      - build
+    desc: Locally build the application binary
+    summary: |-
+      Locally build the application binary for the testing and local development of the Go application with a temporary
+      version number based on the local commit and file contents.
+    silent: true
+    sources:
+      - go.mod
+      - go.sum
+      - main.go
+      - "**/*.go"
+      - .goreleaser.yaml
+    deps:
+      - task: go:healthcheck
+      - task: go:dirs
+      - task: go:modules
+      - task: go:lint
+      - task: go:test
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: goreleaser build --clean --timeout 2m --snapshot --single-target --output bin/{{ .bin }}
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+
+  go:fmt:
+    desc: Properly format all the .go files
+    summary: |-
+      Properly fomrmat all of the .go files using go (this is a write-based action which will make changes to all .go
+      files, if required).
+    silent: true
+    sources:
+      - main.go
+      - "**/*.go"
+    deps:
+      - task: check:exec:go
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: go fmt ./...
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+
+  go:lint:
+    desc: Check linting via golangci-lint
+    summary: |-
+      Run extensive linting tests and checks on the Go application using golangci-lint.
+    silent: true
+    sources:
+      - main.go
+      - "**/*.go"
+      - .golangci.yaml
+    deps:
+      - task: check:exec:golangci-lint
+      - task: go:fmt
+      - task: go:modules
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: golangci-lint --config '{{ .ROOT_DIR }}/.golangci.yaml' run
+      - cmd: echo -e '\e[0;32mPassed\e[0m'
+
+  go:schema:
+    desc: Generate the JSON Schema for the aur-pipelines configuration file
+    summary: |-
+      Generate the JSON Schema for the aur-pipelines configuration file by running the generator tool at
+      tools/schema/main.go. The schema is written to schemas/aur-pipelines.json. Run this task whenever the Config or
+      Template structs in internal/config/config.go change.
+    silent: true
+    sources:
+      - internal/config/config.go
+      - tools/schema/main.go
+    generates:
+      - schemas/aur-pipelines.json
+    deps:
+      - task: check:exec:go
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: go run ./tools/schema/main.go
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+
+  go:test:
+    desc: Run the unit tests for the application
+    silent: true
+    sources:
+      - main.go
+      - "**/*.go"
+      - "**/testdata/*"
+    deps:
+      - task: check:exec:go
+      - task: go:dirs
+      - task: go:lint
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: go test -v ./... -covermode=count -coverprofile=coverage.out
+      - cmd: go tool cover -func=coverage.out
+      - cmd: go tool cover -html=coverage.out -o=coverage.html
+      - cmd: echo -e '\e[0;32mPassed\e[0m'
+
+  go:codeql:database:
+    desc: Build the CodeQL database for analysis
+    run: once
+    internal: true
+    silent: true
+    sources:
+      - bin/{{ .bin }}
+    env:
+      CODEQL_EXTRACTOR_GO_BUILD_TRACING: "on"
+    deps:
+      - task: check:exec:codeql
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: codeql database create .codeql --language=go --threads=0 --overwrite | grep -vP '([Ee]xtracting|Skipping)'
+      - cmd: codeql database finalize .codeql --threads=0 --cleanup-upgrade-backups || true
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+
+  go:codeql:
+    desc: Run CodeQL static code analysis
+    summary: |-
+      Run the CodeQL application against the codebase looking for configuration issues and vunlerabilitys in both the
+      code and any dependencies upstream.
+    silent: true
+    deps:
+      - task: go:codeql:database
+      - task: go:build
+    sources:
+      - go.mod
+      - go.sum
+      - main.go
+      - "**/*.go"
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: |-
+          codeql database analyze --quiet --no-print-metrics-summary \
+            --format=sarif-latest --output codeql.sarif --sarif-add-file-contents \
+            -- .codeql codeql/go-queries
+      - cmd: echo -e '\e[0;32mPassed\e[0m'
+
+  go:clean:
+    desc: Clean temporary directories and files from this function
+    summary: |-
+      Clean any temporary directories and files created by, or for, this Go application, as well as this Taskfile, and
+      the tools and applications called from it.
+    run: once
+    silent: true
+    cmds:
+      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - cmd: rm -rf dist
+      - cmd: rm -f bin/{{ .bin }}
+      - cmd: rm -rf coverage/*/*
+      - cmd: rm -f coverage.out coverage.html
+      - cmd: rm -rf .codeql
+      - cmd: rm -f codeql.sarif
+      - cmd: echo -e '\e[0;32mCompleted\e[0m'
