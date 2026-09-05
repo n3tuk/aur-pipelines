@@ -22,12 +22,14 @@ tasks:
       - exclude: .codeql/**
       # Ignore local temporary directories and test data
       - exclude: dist/**
+      - exclude: pipelines/**
       - exclude: internal/**/testdata/**
     vars:
       files:
         sh: |-
           ( find . -type f \
-              -not \( -path './.codeql/*' -or -path './dist/*' -or -path './internal/*/testdata/*' \) \
+              -not \( -path './.codeql/*' -or -path './dist/*' -or \
+                      -path './pipelines/*' -or -path './internal/*/testdata/*' \) \
               -and \( -iname '*.yml' -or -iname '*.yaml' \) -print 2>/dev/null \
             | sed 's|^\./||' | paste -sd' ' - ) || true
     deps:

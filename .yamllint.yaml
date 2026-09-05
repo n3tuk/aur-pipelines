@@ -5,6 +5,7 @@ extends: default
 
 ignore: |-
   internal/**/testdata
+  pipelines
   .codeql
   dist
 

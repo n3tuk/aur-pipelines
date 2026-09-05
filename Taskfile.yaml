@@ -144,3 +144,4 @@ tasks:
       - task: codeql:clean
       - task: prettier:clean
       - cmd: rm -rf .task/checksum
+      - cmd: rm -rf pipelines/*
