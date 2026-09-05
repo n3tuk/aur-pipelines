@@ -33,9 +33,10 @@ When `aur-pipelines` is run with the path to a YAML file listing a set of AUR pa
      bucket, run `repo-add` to add the packages to the database, and upload the updated database back to the bucket.
      This is the serial job (see the warning below).
 4. Generate a separate [daily repository-cleanup pipeline](#repository-cleanup).
-5. On completion of the repository job, send a notification to each configured webhook URL (for example ntfy, Discord,
-   or Slack), passing the configured headers and message template through to Concourse to interpolate at run time, to
-   report either a successful upload or the failure of a job in the pipeline.
+5. On completion of the repository job, send a notification to each configured webhook whose `type` and `when` match
+   (for example ntfy, Discord, or Slack). The notification task expands a small set of shell variables (such as
+   `${PACKAGE_NAME}` and `${PIPELINE_URL}`) into the configured headers and message body at run time — see
+   [Webhook notifications](#webhook-notifications) — to report either a successful upload or the failure of a job.
 
 ### Secrets and Concourse credential management
 
@@ -112,25 +113,65 @@ bucket:
   repository: private
 
 webhook:
-  - name: ntfy
+  - name: ntfy-success
+    type: build
+    when: on_success
     url: https://ntfy.sh/your-webhook-url
     headers:
       - name: Title
-        value: "{{ .PackageName }} v{{ .PackageVersion }} Build Notification"
+        value: ${PACKAGE_NAME} v${PACKAGE_VERSION} Built
       - name: Icon
         value: https://assets.n3t.uk/concourse.png
       - name: Click
-        value: "{{ .PipelineURL }}"
+        value: ${PIPELINE_URL}
       - name: Actions
-        value: view, View Pipeline, {{ .PipelineURL }}
+        value: view, View Pipeline, ${PIPELINE_URL}
       - name: Priority
         value: low
       - name: Tags
-        value: aur, concourse, {{ .PackageName }}, {{ .PackageVersion }}
+        value: aur, concourse, ${PACKAGE_NAME}, ${PACKAGE_VERSION}
     template: >-
-      {{ if eq .PipelineStatus "succeeded" }} Package {{ .PackageName }} v{{ .PackageVersion }} has been successfully
-      built and uploaded to the repository. {{ else }} Package {{ .PackageName }} v{{ .PackageVersion }} failed to build
-      or upload. Please check the pipeline logs for more information at {{ .PipelineURL }}. {{ end }}
+      Package ${PACKAGE_NAME} v${PACKAGE_VERSION} has been successfully built.
+  - name: ntfy-failure
+    type: build
+    when: on_failure
+    url: https://ntfy.sh/your-webhook-url
+    headers:
+      - name: Title
+        value: ${PACKAGE_NAME} v${PACKAGE_VERSION} Build Failure
+      - name: Icon
+        value: https://assets.n3t.uk/concourse.png
+      - name: Click
+        value: ${PIPELINE_URL}
+      - name: Actions
+        value: view, View Pipeline, ${PIPELINE_URL}
+      - name: Priority
+        value: high
+      - name: Tags
+        value: aur, concourse, ${PACKAGE_NAME}, ${PACKAGE_VERSION}
+    template: >-
+      Package ${PACKAGE_NAME} v${PACKAGE_VERSION} failed to build or upload. Please check the pipeline logs at
+      ${PIPELINE_URL} for additional information on why this job has failed.
+  - name: ntfy-cleanup
+    type: cleanup
+    when: on_failure
+    url: https://ntfy.sh/your-webhook-url
+    headers:
+      - name: Title
+        value: Repository Cleanup Notification
+      - name: Icon
+        value: https://assets.n3t.uk/concourse.png
+      - name: Click
+        value: ${PIPELINE_URL}
+      - name: Actions
+        value: view, View Pipeline, ${PIPELINE_URL}
+      - name: Priority
+        value: high
+      - name: Tags
+        value: aur, concourse, cleanup
+    template: >-
+      The daily cleanup of the ${REPOSITORY} repository has failed to complete. Please check the pipeline logs at
+      ${PIPELINE_URL} for additional information on why this job has failed.
 
 packages:
   - name: kalc-bin
@@ -142,13 +183,32 @@ packages:
 ```
 
 The configuration is validated against a [JSON Schema](schemas/aur-pipelines.json) when it is loaded, so structural
-mistakes (missing required fields, unknown keys, empty values) are reported with a clear error before any pipelines are
-generated. Editors that understand the `yaml-language-server` schema directive can use the same schema for completion
-and inline validation.
+mistakes (missing required fields, unknown keys, invalid `type`/`when` values, empty values) are reported with a clear
+error before any pipelines are generated. Editors that understand the `yaml-language-server` schema directive can use
+the same schema for completion and inline validation.
 
-The `webhook` header values and the `template` are pass-through strings: `aur-pipelines` does not interpret them. Any
-templating within them (for example `{{ .PackageName }}`) is emitted verbatim into the generated pipeline for Concourse
-to interpolate at run time.
+### Webhook notifications
+
+Each `webhook` entry is selected for a job by two keys:
+
+- `type` — `build` for the per-package build pipelines, or `cleanup` for the daily repository-cleanup pipeline.
+- `when` — `on_success` or `on_failure`, selecting which job outcome the webhook fires on.
+
+This means a separate webhook entry is configured for each combination you want to be notified about (for example a
+success and a failure webhook for builds), which removes the need for any conditional logic inside the templates: each
+entry's message already applies to exactly one outcome.
+
+The `template` body and the header `value` fields are pass-through strings in which shell-style variables are expanded
+by the notification task at run time. `aur-pipelines` does not otherwise interpret them; they are emitted into the
+generated pipeline as written. The following variables are available:
+
+| Variable             | Available in      | Description                                                  |
+| -------------------- | ----------------- | ------------------------------------------------------------ |
+| `${PACKAGE_NAME}`    | `build`           | The package base being built.                                |
+| `${PACKAGE_VERSION}` | `build`           | The version of the built package, derived from its filename. |
+| `${REPOSITORY}`      | `cleanup`         | The repository (database) name.                              |
+| `${PIPELINE_STATUS}` | `build` `cleanup` | The job outcome: `succeeded` or `failed`.                    |
+| `${PIPELINE_URL}`    | `build` `cleanup` | The URL of the Concourse build that sent the notification.   |
 
 ## Usage
 

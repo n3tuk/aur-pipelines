@@ -149,7 +149,6 @@ jobs:
     on_success:
       task: notify-succeeded
       params:
-        PIPELINE_STATUS: succeeded
         WEBHOOK_URL: ((webhook.url))
       config:
         platform: linux
@@ -163,15 +162,18 @@ jobs:
             - -c
             - |-
               set -euo pipefail
+              export PIPELINE_STATUS="succeeded"
+              export PIPELINE_URL="${ATC_EXTERNAL_URL}/teams/${BUILD_TEAM_NAME}/pipelines/${BUILD_PIPELINE_NAME}/jobs/${BUILD_JOB_NAME}/builds/${BUILD_NAME}"
+              export PACKAGE_NAME="${BUILD_PIPELINE_NAME}"
+              export PACKAGE_VERSION="$(ls build-artefacts/*.pkg.tar.zst 2>/dev/null | head -n1 | sed -E 's|.*/[^-]+-([^-]+-[^-]+)-[^-]+\.pkg\.tar\.zst|\1|')"
               curl --fail --silent --show-error \
-                --header 'Priority: low' \
-                --header 'Title: {{ .PackageName }} build' \
-                --data '{{ if eq .PipelineStatus "succeeded" }} ok {{ else }} fail {{ end }}' \
+                --header "Priority: low" \
+                --header "Title: ${PACKAGE_NAME} built" \
+                --data "Package ${PACKAGE_NAME} v${PACKAGE_VERSION} built. See ${PIPELINE_URL}." \
                 "${WEBHOOK_URL}"
     on_failure:
       task: notify-failed
       params:
-        PIPELINE_STATUS: failed
         WEBHOOK_URL: ((webhook.url))
       config:
         platform: linux
@@ -185,8 +187,11 @@ jobs:
             - -c
             - |-
               set -euo pipefail
+              export PIPELINE_STATUS="failed"
+              export PIPELINE_URL="${ATC_EXTERNAL_URL}/teams/${BUILD_TEAM_NAME}/pipelines/${BUILD_PIPELINE_NAME}/jobs/${BUILD_JOB_NAME}/builds/${BUILD_NAME}"
+              export PACKAGE_NAME="${BUILD_PIPELINE_NAME}"
+              export PACKAGE_VERSION="$(ls build-artefacts/*.pkg.tar.zst 2>/dev/null | head -n1 | sed -E 's|.*/[^-]+-([^-]+-[^-]+)-[^-]+\.pkg\.tar\.zst|\1|')"
               curl --fail --silent --show-error \
-                --header 'Priority: low' \
-                --header 'Title: {{ .PackageName }} build' \
-                --data '{{ if eq .PipelineStatus "succeeded" }} ok {{ else }} fail {{ end }}' \
+                --header "Title: ${PACKAGE_NAME} failed" \
+                --data "Package ${PACKAGE_NAME} failed. See ${PIPELINE_URL}." \
                 "${WEBHOOK_URL}"

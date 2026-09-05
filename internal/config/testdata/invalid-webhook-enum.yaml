@@ -1,0 +1,24 @@
+---
+container:
+  build:
+    image: archlinux
+    tag: base-devel
+  sign:
+    image: archlinux
+    tag: base-devel
+  upload:
+    image: archlinux
+    tag: base-devel
+
+bucket:
+  name: your-bucket-name
+  repository: private
+
+webhook:
+  - name: ntfy
+    type: build
+    when: on_sucess
+    url: https://ntfy.sh/your-webhook-url
+
+packages:
+  - name: kalc-bin

@@ -36,31 +36,11 @@ func TestLoadValid(t *testing.T) {
 		t.Errorf("Container.Build.Reference() = %q, want %q", got, imageReference)
 	}
 
-	if len(cfg.Webhooks) != 1 {
-		t.Fatalf("len(Webhooks) = %d, want 1", len(cfg.Webhooks))
+	if len(cfg.Webhooks) != 2 {
+		t.Fatalf("len(Webhooks) = %d, want 2", len(cfg.Webhooks))
 	}
 
-	webhook := cfg.Webhooks[0]
-	if webhook.Name != "ntfy" {
-		t.Errorf("Webhooks[0].Name = %q, want %q", webhook.Name, "ntfy")
-	}
-
-	if len(webhook.Headers) != 4 {
-		t.Fatalf("len(Webhooks[0].Headers) = %d, want 4", len(webhook.Headers))
-	}
-
-	if webhook.Headers[0].Name != "Title" {
-		t.Errorf("Headers[0].Name = %q, want %q", webhook.Headers[0].Name, "Title")
-	}
-
-	// The header value must be preserved verbatim, including templating.
-	if !strings.Contains(webhook.Headers[0].Value, "{{ .PackageName }}") {
-		t.Errorf("Headers[0].Value = %q, want it to contain the pass-through template", webhook.Headers[0].Value)
-	}
-
-	if !strings.Contains(webhook.Template, "{{ if eq .PipelineStatus") {
-		t.Errorf("Webhooks[0].Template did not preserve the pass-through template: %q", webhook.Template)
-	}
+	assertFirstWebhook(t, cfg.Webhooks[0])
 
 	wantPackages := []string{packageKalcBin, "ntfysh-bin", "keybase-bin"}
 	if len(cfg.Packages) != len(wantPackages) {
@@ -148,8 +128,8 @@ func TestSummary(t *testing.T) {
 	wantContains := []string{
 		"your-bucket-name",
 		imageReference,
-		"Webhooks:   1",
-		"ntfy (4 header(s))",
+		"Webhooks:   2",
+		"ntfy-success (3 header(s))",
 		"Packages:   3",
 		"kalc-bin",
 	}
@@ -186,5 +166,41 @@ func TestImageReference(t *testing.T) {
 				t.Errorf("Reference() = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// assertFirstWebhook checks the parsed fields of the first webhook in the valid
+// fixture.
+func assertFirstWebhook(t *testing.T, webhook config.Webhook) {
+	t.Helper()
+
+	if webhook.Name != "ntfy-success" {
+		t.Errorf("Webhook.Name = %q, want %q", webhook.Name, "ntfy-success")
+	}
+
+	if webhook.Type != config.WebhookTypeBuild {
+		t.Errorf("Webhook.Type = %q, want %q", webhook.Type, config.WebhookTypeBuild)
+	}
+
+	if webhook.When != config.WebhookWhenSuccess {
+		t.Errorf("Webhook.When = %q, want %q", webhook.When, config.WebhookWhenSuccess)
+	}
+
+	if len(webhook.Headers) != 3 {
+		t.Fatalf("len(Webhook.Headers) = %d, want 3", len(webhook.Headers))
+	}
+
+	if webhook.Headers[0].Name != "Title" {
+		t.Errorf("Headers[0].Name = %q, want %q", webhook.Headers[0].Name, "Title")
+	}
+
+	// The header value and template must be preserved verbatim, including the
+	// pass-through shell variables.
+	if !strings.Contains(webhook.Headers[0].Value, "${PACKAGE_NAME}") {
+		t.Errorf("Headers[0].Value = %q, want it to contain the pass-through variable", webhook.Headers[0].Value)
+	}
+
+	if !strings.Contains(webhook.Template, "${PACKAGE_NAME}") {
+		t.Errorf("Webhook.Template did not preserve the pass-through variable: %q", webhook.Template)
 	}
 }

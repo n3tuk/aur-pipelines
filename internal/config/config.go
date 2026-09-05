@@ -53,12 +53,21 @@ type (
 	}
 
 	// Webhook describes a single notification endpoint invoked when a pipeline
-	// completes. The header values and template are opaque, pass-through
-	// strings that may contain Concourse-rendered templating; aur-pipelines
-	// does not interpret them.
+	// completes. It is selected for a job by its Type (which kind of pipeline)
+	// and When (which job outcome). The header values and template are
+	// pass-through strings in which shell-style variable references (for
+	// example "${PACKAGE_NAME}") are expanded at run time; aur-pipelines does
+	// not otherwise interpret them.
 	Webhook struct {
 		// Name is a human-readable identifier for the webhook (e.g. "ntfy").
 		Name string `json:"name" jsonschema:"required,minLength=1" mapstructure:"name" yaml:"name"`
+		// Type selects which kind of pipeline this webhook applies to: "build"
+		// for the per-package pipelines, or "cleanup" for the daily
+		// repository-cleanup pipeline.
+		Type string `json:"type" jsonschema:"required,enum=build,enum=cleanup" mapstructure:"type" yaml:"type"`
+		// When selects which job outcome this webhook fires on: "on_success" or
+		// "on_failure".
+		When string `json:"when" jsonschema:"required,enum=on_success,enum=on_failure" mapstructure:"when" yaml:"when"`
 		// URL is the endpoint the notification is sent to.
 		URL string `json:"url" jsonschema:"required,minLength=1,format=uri" mapstructure:"url" yaml:"url"`
 		// Headers is the ordered list of HTTP headers to send with the request.
@@ -68,11 +77,12 @@ type (
 	}
 
 	// Header is a single HTTP header name/value pair sent with a webhook
-	// request. The value is an opaque, pass-through string.
+	// request. The value is a pass-through string in which shell-style variable
+	// references are expanded at run time.
 	Header struct {
 		// Name is the HTTP header field name.
 		Name string `json:"name" jsonschema:"required,minLength=1" mapstructure:"name" yaml:"name"`
-		// Value is the HTTP header field value (may contain templating).
+		// Value is the HTTP header field value (may contain variables).
 		Value string `json:"value" jsonschema:"required" mapstructure:"value" yaml:"value"`
 	}
 
@@ -83,4 +93,18 @@ type (
 		// Name is the AUR package name.
 		Name string `json:"name" jsonschema:"required,minLength=1" mapstructure:"name" yaml:"name"`
 	}
+)
+
+// Webhook Type and When values. Type selects which kind of pipeline a webhook
+// applies to; When selects which job outcome it fires on.
+const (
+	// WebhookTypeBuild selects the per-package build pipelines.
+	WebhookTypeBuild = "build"
+	// WebhookTypeCleanup selects the daily repository-cleanup pipeline.
+	WebhookTypeCleanup = "cleanup"
+
+	// WebhookWhenSuccess fires the webhook when the job succeeds.
+	WebhookWhenSuccess = "on_success"
+	// WebhookWhenFailure fires the webhook when the job fails.
+	WebhookWhenFailure = "on_failure"
 )

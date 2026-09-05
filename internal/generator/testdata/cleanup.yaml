@@ -78,7 +78,6 @@ jobs:
     on_failure:
       task: notify-failed
       params:
-        PIPELINE_STATUS: failed
         WEBHOOK_URL: ((webhook.url))
       config:
         platform: linux
@@ -92,8 +91,10 @@ jobs:
             - -c
             - |-
               set -euo pipefail
+              export PIPELINE_STATUS="failed"
+              export PIPELINE_URL="${ATC_EXTERNAL_URL}/teams/${BUILD_TEAM_NAME}/pipelines/${BUILD_PIPELINE_NAME}/jobs/${BUILD_JOB_NAME}/builds/${BUILD_NAME}"
+              export REPOSITORY="private"
               curl --fail --silent --show-error \
-                --header 'Priority: low' \
-                --header 'Title: {{ .PackageName }} build' \
-                --data '{{ if eq .PipelineStatus "succeeded" }} ok {{ else }} fail {{ end }}' \
+                --header "Title: Cleanup of ${REPOSITORY} failed" \
+                --data "Cleanup failed. See ${PIPELINE_URL}." \
                 "${WEBHOOK_URL}"

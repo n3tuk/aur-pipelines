@@ -90,6 +90,16 @@
             "minLength": 1,
             "description": "Name is a human-readable identifier for the webhook (e.g. \"ntfy\")."
           },
+          "type": {
+            "type": "string",
+            "enum": ["build", "cleanup"],
+            "description": "Type selects which kind of pipeline this webhook applies to: \"build\"\nfor the per-package pipelines, or \"cleanup\" for the daily\nrepository-cleanup pipeline."
+          },
+          "when": {
+            "type": "string",
+            "enum": ["on_success", "on_failure"],
+            "description": "When selects which job outcome this webhook fires on: \"on_success\" or\n\"on_failure\"."
+          },
           "url": {
             "type": "string",
             "minLength": 1,
@@ -106,7 +116,7 @@
                 },
                 "value": {
                   "type": "string",
-                  "description": "Value is the HTTP header field value (may contain templating)."
+                  "description": "Value is the HTTP header field value (may contain variables)."
                 }
               },
               "additionalProperties": false,
@@ -124,7 +134,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": ["name", "url"],
+        "required": ["name", "type", "when", "url"],
         "description": "Webhook describes a single notification endpoint invoked when a pipeline completes."
       },
       "type": "array",

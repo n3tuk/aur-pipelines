@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"github.com/n3tuk/aur-pipelines/internal/config"
 	"github.com/n3tuk/aur-pipelines/internal/pipeline"
 )
 
@@ -101,7 +102,8 @@ func (g *Generator) cleanupJob() pipeline.Job {
 	return pipeline.Job{
 		Name:      jobCleanup,
 		Serial:    true,
-		OnFailure: g.notifyStep("failed"),
+		OnSuccess: g.notifyStep(config.WebhookTypeCleanup, config.WebhookWhenSuccess),
+		OnFailure: g.notifyStep(config.WebhookTypeCleanup, config.WebhookWhenFailure),
 		Plan: []pipeline.Step{
 			{Get: resourceDaily, Trigger: true},
 			{

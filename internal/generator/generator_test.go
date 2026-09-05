@@ -18,6 +18,8 @@ const (
 	baseLibDep  = "libdep"
 	imageArch   = "archlinux"
 	tagDevel    = "base-devel"
+	webhookURL  = "https://ntfy.sh/example"
+	headerTitle = "Title"
 )
 
 // update, when set via `go test -update`, rewrites the golden files instead of
@@ -36,13 +38,35 @@ func testConfig() *config.Config {
 		Bucket: config.Bucket{Name: "my-bucket", Repository: "private"},
 		Webhooks: []config.Webhook{
 			{
-				Name: "ntfy",
-				URL:  "https://ntfy.sh/example",
+				Name: "ntfy-success",
+				Type: config.WebhookTypeBuild,
+				When: config.WebhookWhenSuccess,
+				URL:  webhookURL,
 				Headers: []config.Header{
-					{Name: "Title", Value: "{{ .PackageName }} build"},
+					{Name: headerTitle, Value: "${PACKAGE_NAME} built"},
 					{Name: "Priority", Value: "low"},
 				},
-				Template: `{{ if eq .PipelineStatus "succeeded" }} ok {{ else }} fail {{ end }}`,
+				Template: `Package ${PACKAGE_NAME} v${PACKAGE_VERSION} built. See ${PIPELINE_URL}.`,
+			},
+			{
+				Name: "ntfy-failure",
+				Type: config.WebhookTypeBuild,
+				When: config.WebhookWhenFailure,
+				URL:  webhookURL,
+				Headers: []config.Header{
+					{Name: headerTitle, Value: "${PACKAGE_NAME} failed"},
+				},
+				Template: `Package ${PACKAGE_NAME} failed. See ${PIPELINE_URL}.`,
+			},
+			{
+				Name: "ntfy-cleanup",
+				Type: config.WebhookTypeCleanup,
+				When: config.WebhookWhenFailure,
+				URL:  webhookURL,
+				Headers: []config.Header{
+					{Name: headerTitle, Value: "Cleanup of ${REPOSITORY} failed"},
+				},
+				Template: `Cleanup failed. See ${PIPELINE_URL}.`,
 			},
 		},
 	}
@@ -236,9 +260,33 @@ func TestTemplatePassedThroughVerbatim(t *testing.T) {
 	result := &resolver.Result{PackageBases: []string{baseKalcBin}}
 	got := generatePipeline(t, testConfig(), result, baseKalcBin)
 
-	// The webhook template must be present unrendered for Concourse to
-	// interpolate at run time.
-	if !strings.Contains(got, ".PipelineStatus") {
-		t.Errorf("webhook template not passed through verbatim:\n%s", got)
+	// The webhook template variables must be present unrendered so the notify
+	// task's shell expands them at run time.
+	for _, variable := range []string{"${PACKAGE_NAME}", "${PACKAGE_VERSION}", "${PIPELINE_URL}"} {
+		if !strings.Contains(got, variable) {
+			t.Errorf("webhook template variable %q not passed through:\n%s", variable, got)
+		}
+	}
+
+	// The task must export the variables it references.
+	if !strings.Contains(got, `export PACKAGE_NAME=`) {
+		t.Errorf("notify task should export PACKAGE_NAME:\n%s", got)
+	}
+}
+
+func TestBuildAndFailureNotificationsAreSeparate(t *testing.T) {
+	t.Parallel()
+
+	result := &resolver.Result{PackageBases: []string{baseKalcBin}}
+	got := generatePipeline(t, testConfig(), result, baseKalcBin)
+
+	// Distinct success and failure notify tasks are generated, so no
+	// conditional templating is needed.
+	if !strings.Contains(got, "task: notify-succeeded") {
+		t.Errorf("expected an on_success notify task:\n%s", got)
+	}
+
+	if !strings.Contains(got, "task: notify-failed") {
+		t.Errorf("expected an on_failure notify task:\n%s", got)
 	}
 }

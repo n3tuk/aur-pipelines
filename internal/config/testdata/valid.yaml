@@ -15,21 +15,30 @@ bucket:
   repository: private
 
 webhook:
-  - name: ntfy
+  - name: ntfy-success
+    type: build
+    when: on_success
     url: https://ntfy.sh/your-webhook-url
     headers:
       - name: Title
-        value: "{{ .PackageName }} v{{ .PackageVersion }} Build Notification"
-      - name: Icon
-        value: https://assets.n3t.uk/images/concourse-256x256.png
+        value: ${PACKAGE_NAME} v${PACKAGE_VERSION} Built
       - name: Priority
         value: low
       - name: Tags
-        value: aur, concourse, {{ .PackageName }}, {{ .PackageVersion }}
+        value: aur, concourse, ${PACKAGE_NAME}, ${PACKAGE_VERSION}
     template: >-
-      {{ if eq .PipelineStatus "succeeded" }} Package {{ .PackageName }} v{{ .PackageVersion }} has been successfully
-      built and uploaded to the repository. {{ else }} Package {{ .PackageName }} v{{ .PackageVersion }} failed to build
-      or upload. {{ end }}
+      Package ${PACKAGE_NAME} v${PACKAGE_VERSION} has been successfully built and uploaded to the repository.
+  - name: ntfy-failure
+    type: build
+    when: on_failure
+    url: https://ntfy.sh/your-webhook-url
+    headers:
+      - name: Title
+        value: ${PACKAGE_NAME} v${PACKAGE_VERSION} Build Failure
+      - name: Priority
+        value: high
+    template: >-
+      Package ${PACKAGE_NAME} v${PACKAGE_VERSION} failed to build. See ${PIPELINE_URL} for details.
 
 packages:
   - name: kalc-bin

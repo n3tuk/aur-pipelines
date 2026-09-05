@@ -16,6 +16,7 @@ func TestLoadRejectsInvalidConfigs(t *testing.T) {
 		"invalid-missing-bucket.yaml",
 		"invalid-empty-packages.yaml",
 		"invalid-unknown-key.yaml",
+		"invalid-webhook-enum.yaml",
 	}
 
 	for _, fixture := range fixtures {

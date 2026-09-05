@@ -119,8 +119,8 @@ func (g *Generator) repositoryJob() pipeline.Job {
 		Name:         jobRepository,
 		Serial:       true,
 		SerialGroups: []string{serialGroupRepository},
-		OnSuccess:    g.notifyStep("succeeded"),
-		OnFailure:    g.notifyStep("failed"),
+		OnSuccess:    g.notifyStep(config.WebhookTypeBuild, config.WebhookWhenSuccess),
+		OnFailure:    g.notifyStep(config.WebhookTypeBuild, config.WebhookWhenFailure),
 		Plan: []pipeline.Step{
 			{Get: resourceArtefacts, Passed: []string{jobBuildUpload}},
 			{Get: resourceSignatures, Trigger: true, Passed: []string{jobSign}},
