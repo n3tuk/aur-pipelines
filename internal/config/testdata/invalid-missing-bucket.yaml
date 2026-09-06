@@ -9,6 +9,9 @@ container:
   upload:
     image: archlinux
     tag: base-devel
+  cleanup:
+    image: amazon/aws-cli
+    tag: latest
 
 packages:
   - name: kalc-bin

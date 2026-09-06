@@ -13,13 +13,15 @@ import (
 )
 
 const (
-	baseKalcBin = "kalc-bin"
-	baseApp     = "app"
-	baseLibDep  = "libdep"
-	imageArch   = "archlinux"
-	tagDevel    = "base-devel"
-	headerTitle = "Title"
-	secretNtfy  = "ntfy"
+	baseKalcBin   = "kalc-bin"
+	baseApp       = "app"
+	baseLibDep    = "libdep"
+	imageArch     = "archlinux"
+	tagDevel      = "base-devel"
+	headerTitle   = "Title"
+	secretNtfy    = "ntfy"
+	secretDocker  = "docker"
+	dockerUserRef = "username: ((repositories/docker.username))"
 )
 
 // update, when set via `go test -update`, rewrites the golden files instead of
@@ -31,9 +33,11 @@ var update = flag.Bool("update", false, "update golden files")
 func testConfig() *config.Config {
 	return &config.Config{
 		Container: config.Container{
-			Build:  config.Image{Image: imageArch, Tag: tagDevel},
-			Sign:   config.Image{Image: imageArch, Tag: tagDevel},
-			Upload: config.Image{Image: imageArch, Tag: tagDevel},
+			Build:   config.Image{Image: imageArch, Tag: tagDevel},
+			Sign:    config.Image{Image: imageArch, Tag: tagDevel},
+			Upload:  config.Image{Image: imageArch, Tag: tagDevel},
+			Cleanup: config.Image{Image: "amazon/aws-cli", Tag: "latest"},
+			Notify:  config.Image{Image: "curlimages/curl"},
 		},
 		Bucket: config.Bucket{Name: "my-bucket", Repository: "private"},
 		Webhooks: []config.Webhook{
@@ -338,5 +342,83 @@ func TestNotificationIsBestEffort(t *testing.T) {
 
 	if !strings.Contains(got, `|| true`) {
 		t.Errorf("notify curl should be guarded with || true:\n%s", got)
+	}
+}
+
+func TestImagePullCredentials(t *testing.T) {
+	t.Parallel()
+
+	cfg := testConfig()
+	cfg.Container.Build.Secret = secretDocker
+
+	result := &resolver.Result{PackageBases: []string{baseKalcBin}}
+	got := generatePipeline(t, cfg, result, baseKalcBin)
+
+	for _, want := range []string{
+		dockerUserRef,
+		"password: ((repositories/docker.password))",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("build image should carry pull credentials %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestImageWithoutSecretHasNoCredentials(t *testing.T) {
+	t.Parallel()
+
+	// The default test config sets no image secret, so no pull credentials
+	// should be emitted.
+	result := &resolver.Result{PackageBases: []string{baseKalcBin}}
+	got := generatePipeline(t, testConfig(), result, baseKalcBin)
+
+	if strings.Contains(got, "repositories/") {
+		t.Errorf("no image secret configured, but pull credentials present:\n%s", got)
+	}
+}
+
+func TestCleanupUsesConfiguredImage(t *testing.T) {
+	t.Parallel()
+
+	cfg := testConfig()
+	cfg.Container.Cleanup = config.Image{Image: "my-registry/cleanup", Tag: "v1", Secret: secretDocker}
+
+	p := generator.New(cfg).CleanupPipeline()
+
+	out, err := p.Pipeline.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal() error: %v", err)
+	}
+
+	got := string(out)
+
+	for _, want := range []string{
+		"repository: my-registry/cleanup",
+		"tag: v1",
+		dockerUserRef,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("cleanup pipeline should use the configured image %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestNotifyUsesConfiguredImage(t *testing.T) {
+	t.Parallel()
+
+	cfg := testConfig()
+	cfg.Container.Notify = config.Image{Image: "my-registry/notify", Tag: "v2", Secret: secretDocker}
+
+	result := &resolver.Result{PackageBases: []string{baseKalcBin}}
+	got := generatePipeline(t, cfg, result, baseKalcBin)
+
+	for _, want := range []string{
+		"repository: my-registry/notify",
+		"tag: v2",
+		dockerUserRef,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("notify task should use the configured image %q:\n%s", want, got)
+		}
 	}
 }

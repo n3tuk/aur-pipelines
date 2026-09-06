@@ -12,8 +12,10 @@ type (
 	// Config is the top-level aur-pipelines configuration, loaded from a YAML
 	// file. Each field corresponds to a top-level key in that file.
 	Config struct {
-		// Container holds the container images used for each pipeline stage.
-		Container Container `json:"container" jsonschema:"required" mapstructure:"container" yaml:"container"`
+		// Container holds the container images used for each pipeline stage. It
+		// is optional; any omitted stage (or the whole block) falls back to a
+		// built-in default image.
+		Container Container `json:"container,omitzero" mapstructure:"container" yaml:"container"`
 		// Bucket describes the target object-storage bucket and repository.
 		Bucket Bucket `json:"bucket" jsonschema:"required" mapstructure:"bucket" yaml:"bucket"`
 		// Webhooks is the list of notification webhooks to invoke on completion.
@@ -23,23 +25,41 @@ type (
 	}
 
 	// Container groups the container image references used by the distinct
-	// stages of a generated pipeline.
+	// stages of a generated pipeline. Every field is optional; an omitted stage
+	// falls back to a built-in default image (see DefaultContainer).
 	Container struct {
 		// Build is the image used for the package build stage.
-		Build Image `json:"build" jsonschema:"required" mapstructure:"build" yaml:"build"`
+		Build Image `json:"build,omitzero" mapstructure:"build" yaml:"build"`
 		// Sign is the image used for the package signing stage.
-		Sign Image `json:"sign" jsonschema:"required" mapstructure:"sign" yaml:"sign"`
+		Sign Image `json:"sign,omitzero" mapstructure:"sign" yaml:"sign"`
 		// Upload is the image used for the repository upload stage.
-		Upload Image `json:"upload" jsonschema:"required" mapstructure:"upload" yaml:"upload"`
+		Upload Image `json:"upload,omitzero" mapstructure:"upload" yaml:"upload"`
+		// Cleanup is the image used for the daily repository-cleanup job. It
+		// must provide the AWS CLI (for S3-compatible access to R2) in addition
+		// to a shell and the usual archive tools.
+		Cleanup Image `json:"cleanup,omitzero" mapstructure:"cleanup" yaml:"cleanup"`
+		// Notify is the image used for the notification tasks. It must provide
+		// a POSIX shell and curl.
+		Notify Image `json:"notify,omitzero" mapstructure:"notify" yaml:"notify"`
 	}
 
-	// Image is a container image reference expressed as a repository image
-	// name and a tag.
+	// Image is a container image reference expressed as a repository image name
+	// and a tag, with an optional credential for pulling it from a private
+	// registry. The image and tag are optional; when omitted, the stage's
+	// default image is used.
 	Image struct {
 		// Image is the container image repository name (e.g. "archlinux").
-		Image string `json:"image" jsonschema:"required,minLength=1" mapstructure:"image" yaml:"image"`
+		Image string `json:"image,omitempty" mapstructure:"image" yaml:"image"`
 		// Tag is the container image tag (e.g. "base-devel").
-		Tag string `json:"tag" jsonschema:"required,minLength=1" mapstructure:"tag" yaml:"tag"`
+		Tag string `json:"tag,omitempty" mapstructure:"tag" yaml:"tag"`
+		// Secret optionally names the credential holding the registry username
+		// and password used to pull the image. When set, the pull credentials
+		// are sourced from "((repositories/<secret>.username))" and
+		// "((repositories/<secret>.password))"; when unset, the image is pulled
+		// anonymously.
+		//
+		//nolint:lll // struct tags cannot be wrapped
+		Secret string `json:"secret,omitempty" jsonschema:"pattern=^[a-zA-Z0-9._-]+$" mapstructure:"secret" yaml:"secret,omitempty"`
 	}
 
 	// Bucket describes the target object-storage bucket holding the Arch

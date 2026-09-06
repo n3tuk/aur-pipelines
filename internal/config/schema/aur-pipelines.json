@@ -8,61 +8,106 @@
           "properties": {
             "image": {
               "type": "string",
-              "minLength": 1,
               "description": "Image is the container image repository name (e.g. \"archlinux\")."
             },
             "tag": {
               "type": "string",
-              "minLength": 1,
               "description": "Tag is the container image tag (e.g. \"base-devel\")."
+            },
+            "secret": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "description": "Secret optionally names the credential holding the registry username\nand password used to pull the image. When set, the pull credentials\nare sourced from \"((repositories/\u003csecret\u003e.username))\" and\n\"((repositories/\u003csecret\u003e.password))\"; when unset, the image is pulled\nanonymously."
             }
           },
           "additionalProperties": false,
           "type": "object",
-          "required": ["image", "tag"],
           "description": "Build is the image used for the package build stage."
         },
         "sign": {
           "properties": {
             "image": {
               "type": "string",
-              "minLength": 1,
               "description": "Image is the container image repository name (e.g. \"archlinux\")."
             },
             "tag": {
               "type": "string",
-              "minLength": 1,
               "description": "Tag is the container image tag (e.g. \"base-devel\")."
+            },
+            "secret": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "description": "Secret optionally names the credential holding the registry username\nand password used to pull the image. When set, the pull credentials\nare sourced from \"((repositories/\u003csecret\u003e.username))\" and\n\"((repositories/\u003csecret\u003e.password))\"; when unset, the image is pulled\nanonymously."
             }
           },
           "additionalProperties": false,
           "type": "object",
-          "required": ["image", "tag"],
           "description": "Sign is the image used for the package signing stage."
         },
         "upload": {
           "properties": {
             "image": {
               "type": "string",
-              "minLength": 1,
               "description": "Image is the container image repository name (e.g. \"archlinux\")."
             },
             "tag": {
               "type": "string",
-              "minLength": 1,
               "description": "Tag is the container image tag (e.g. \"base-devel\")."
+            },
+            "secret": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "description": "Secret optionally names the credential holding the registry username\nand password used to pull the image. When set, the pull credentials\nare sourced from \"((repositories/\u003csecret\u003e.username))\" and\n\"((repositories/\u003csecret\u003e.password))\"; when unset, the image is pulled\nanonymously."
             }
           },
           "additionalProperties": false,
           "type": "object",
-          "required": ["image", "tag"],
           "description": "Upload is the image used for the repository upload stage."
+        },
+        "cleanup": {
+          "properties": {
+            "image": {
+              "type": "string",
+              "description": "Image is the container image repository name (e.g. \"archlinux\")."
+            },
+            "tag": {
+              "type": "string",
+              "description": "Tag is the container image tag (e.g. \"base-devel\")."
+            },
+            "secret": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "description": "Secret optionally names the credential holding the registry username\nand password used to pull the image. When set, the pull credentials\nare sourced from \"((repositories/\u003csecret\u003e.username))\" and\n\"((repositories/\u003csecret\u003e.password))\"; when unset, the image is pulled\nanonymously."
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "description": "Cleanup is the image used for the daily repository-cleanup job. It\nmust provide the AWS CLI (for S3-compatible access to R2) in addition\nto a shell and the usual archive tools."
+        },
+        "notify": {
+          "properties": {
+            "image": {
+              "type": "string",
+              "description": "Image is the container image repository name (e.g. \"archlinux\")."
+            },
+            "tag": {
+              "type": "string",
+              "description": "Tag is the container image tag (e.g. \"base-devel\")."
+            },
+            "secret": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9._-]+$",
+              "description": "Secret optionally names the credential holding the registry username\nand password used to pull the image. When set, the pull credentials\nare sourced from \"((repositories/\u003csecret\u003e.username))\" and\n\"((repositories/\u003csecret\u003e.password))\"; when unset, the image is pulled\nanonymously."
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "description": "Notify is the image used for the notification tasks. It must provide\na POSIX shell and curl."
         }
       },
       "additionalProperties": false,
       "type": "object",
-      "required": ["build", "sign", "upload"],
-      "description": "Container holds the container images used for each pipeline stage."
+      "description": "Container holds the container images used for each pipeline stage. It\nis optional; any omitted stage (or the whole block) falls back to a\nbuilt-in default image."
     },
     "bucket": {
       "properties": {
@@ -160,6 +205,6 @@
   },
   "additionalProperties": false,
   "type": "object",
-  "required": ["container", "bucket", "packages"],
+  "required": ["bucket", "packages"],
   "description": "Config is the top-level aur-pipelines configuration, loaded from a YAML file."
 }

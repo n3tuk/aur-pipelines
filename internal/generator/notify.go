@@ -11,10 +11,6 @@ import (
 )
 
 const (
-	// notifyImage is the minimal image used for the notification task; it only
-	// needs a shell and curl.
-	notifyImage = "curlimages/curl"
-
 	// pipelineURLExpr builds the Concourse build URL from the standard build
 	// metadata environment variables Concourse provides to every task.
 	pipelineURLExpr = "${ATC_EXTERNAL_URL}/teams/${BUILD_TEAM_NAME}/pipelines/" +
@@ -52,12 +48,10 @@ func (g *Generator) notifyStep(webhookType, when string) *pipeline.Step {
 		Task:   "notify-" + status,
 		Params: params,
 		Config: &pipeline.TaskConfig{
-			Platform: platformLinux,
-			ImageResource: &pipeline.ImageResource{
-				Type:   typeRegistryImage,
-				Source: map[string]string{sourceRepository: notifyImage},
-			},
-			// curlimages/curl is Alpine-based and provides sh, not bash.
+			Platform:      platformLinux,
+			ImageResource: g.image(g.config.Container.Notify),
+			// The notify image (curlimages/curl by default) is Alpine-based and
+			// provides sh, not bash.
 			Run: pipeline.Command{Path: "sh", Args: []string{"-c", g.notifyScriptFor(webhookType, status, matching)}},
 		},
 	}

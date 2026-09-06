@@ -204,3 +204,56 @@ func assertFirstWebhook(t *testing.T, webhook config.Webhook) {
 		t.Errorf("Webhook.Template did not preserve the pass-through variable: %q", webhook.Template)
 	}
 }
+
+func TestLoadAppliesContainerDefaults(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := config.Load(filepath.Join("testdata", "no-container.yaml"))
+	if err != nil {
+		t.Fatalf("Load() returned unexpected error: %v", err)
+	}
+
+	cases := map[string]struct {
+		got  config.Image
+		want string
+	}{
+		"build":   {cfg.Container.Build, imageReference},
+		"sign":    {cfg.Container.Sign, imageReference},
+		"upload":  {cfg.Container.Upload, imageReference},
+		"cleanup": {cfg.Container.Cleanup, "amazon/aws-cli:latest"},
+		"notify":  {cfg.Container.Notify, "curlimages/curl"},
+	}
+
+	for stage, tc := range cases {
+		if got := tc.got.Reference(); got != tc.want {
+			t.Errorf("default %s image = %q, want %q", stage, got, tc.want)
+		}
+	}
+}
+
+func TestLoadPreservesConfiguredContainerImages(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := config.Load(filepath.Join("testdata", "partial-container.yaml"))
+	if err != nil {
+		t.Fatalf("Load() returned unexpected error: %v", err)
+	}
+
+	// Configured stages are preserved.
+	if got := cfg.Container.Build.Reference(); got != "my-registry/arch:custom" {
+		t.Errorf("build image = %q, want %q", got, "my-registry/arch:custom")
+	}
+
+	if got := cfg.Container.Notify.Reference(); got != "my-registry/curl:v1" {
+		t.Errorf("notify image = %q, want %q", got, "my-registry/curl:v1")
+	}
+
+	// Omitted stages fall back to their defaults.
+	if got := cfg.Container.Sign.Reference(); got != imageReference {
+		t.Errorf("sign image = %q, want default %q", got, imageReference)
+	}
+
+	if got := cfg.Container.Cleanup.Reference(); got != "amazon/aws-cli:latest" {
+		t.Errorf("cleanup image = %q, want default %q", got, "amazon/aws-cli:latest")
+	}
+}

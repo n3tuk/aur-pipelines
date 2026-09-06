@@ -24,6 +24,7 @@ jobs:
             type: registry-image
             source:
               repository: amazon/aws-cli
+              tag: latest
           run:
             path: bash
             args:

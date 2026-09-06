@@ -16,10 +16,6 @@ const (
 	jobCleanup = "cleanup-repository"
 	// cleanupInterval is how often the cleanup job runs.
 	cleanupInterval = "24h"
-	// cleanupImage is the image used for the cleanup task; it needs a shell,
-	// the AWS CLI (for S3-compatible access to R2), and tar/gzip to read the
-	// package database.
-	cleanupImage = "amazon/aws-cli"
 
 	// cleanupScript enumerates the packages held in the bucket, and for any
 	// package with more than one version present, verifies that the newest
@@ -116,12 +112,9 @@ func (g *Generator) cleanupJob() pipeline.Job {
 					"R2_SECRET_ACCESS_KEY": secretR2SecretKey,
 				},
 				Config: &pipeline.TaskConfig{
-					Platform: platformLinux,
-					ImageResource: &pipeline.ImageResource{
-						Type:   typeRegistryImage,
-						Source: map[string]string{sourceRepository: cleanupImage},
-					},
-					Run: shell(cleanupScript),
+					Platform:      platformLinux,
+					ImageResource: g.image(g.config.Container.Cleanup),
+					Run:           shell(cleanupScript),
 				},
 			},
 		},

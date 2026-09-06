@@ -148,17 +148,36 @@ func (g *Generator) repositoryJob() pipeline.Job {
 }
 
 // image builds the task image_resource for the given configured container
-// image, using registry-image so any OCI registry image can be used.
+// image, using registry-image so any OCI registry image can be used. When the
+// image has a Secret configured, registry pull credentials are sourced from the
+// corresponding "((repositories/<secret>.username))" and
+// "((repositories/<secret>.password))" credentials.
 func (g *Generator) image(img config.Image) *pipeline.ImageResource {
 	source := map[string]string{sourceRepository: img.Image}
 	if img.Tag != "" {
 		source["tag"] = img.Tag
 	}
 
+	if img.Secret != "" {
+		source["username"] = repositoryUsernameRef(img.Secret)
+		source["password"] = repositoryPasswordRef(img.Secret)
+	}
+
 	return &pipeline.ImageResource{
 		Type:   typeRegistryImage,
 		Source: source,
 	}
+}
+
+// repositoryUsernameRef and repositoryPasswordRef build the Concourse
+// credential-manager references for a container registry's pull credentials
+// from the image's secret name.
+func repositoryUsernameRef(secret string) string {
+	return "((repositories/" + secret + ".username))"
+}
+
+func repositoryPasswordRef(secret string) string {
+	return "((repositories/" + secret + ".password))"
 }
 
 // shell wraps a script body in a bash -c invocation.

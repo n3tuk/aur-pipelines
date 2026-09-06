@@ -49,5 +49,9 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("decoding configuration file %q: %w", path, err)
 	}
 
+	// Fill any omitted container images with their built-in defaults so the
+	// rest of the application always sees a fully populated configuration.
+	cfg.applyDefaults()
+
 	return cfg, nil
 }

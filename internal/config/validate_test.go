@@ -61,9 +61,10 @@ func TestConfigValidate(t *testing.T) {
 
 	valid := &config.Config{
 		Container: config.Container{
-			Build:  config.Image{Image: imageArchLinux, Tag: tagBaseDevel},
-			Sign:   config.Image{Image: imageArchLinux, Tag: tagBaseDevel},
-			Upload: config.Image{Image: imageArchLinux, Tag: tagBaseDevel},
+			Build:   config.Image{Image: imageArchLinux, Tag: tagBaseDevel},
+			Sign:    config.Image{Image: imageArchLinux, Tag: tagBaseDevel},
+			Upload:  config.Image{Image: imageArchLinux, Tag: tagBaseDevel},
+			Cleanup: config.Image{Image: "amazon/aws-cli", Tag: "latest"},
 		},
 		Bucket:   config.Bucket{Name: "bucket", Repository: "private"},
 		Packages: []config.Package{{Name: packageKalcBin}},

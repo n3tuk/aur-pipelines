@@ -49,20 +49,28 @@ credential manager own access control and auditing.
 The following secrets must be populated in OpenBao (under the path Concourse is configured to look up for the team and
 pipeline) before the generated pipelines can run:
 
-| Reference                    | Purpose                                                             |
-| ---------------------------- | ------------------------------------------------------------------- |
-| `((gpg.signing-key))`        | ASCII-armoured GPG private key used to sign packages.               |
-| `((gpg.signing-passphrase))` | Passphrase for the GPG signing key.                                 |
-| `((r2.account-id))`          | Cloudflare R2 account ID, used to build the S3-compatible endpoint. |
-| `((r2.access-key-id))`       | Cloudflare R2 access key ID.                                        |
-| `((r2.secret-access-key))`   | Cloudflare R2 secret access key.                                    |
-| `((webhooks/<secret>.url))`  | Notification endpoint URL, one credential per configured webhook.   |
+| Reference                            | Purpose                                                             |
+| ------------------------------------ | ------------------------------------------------------------------- |
+| `((gpg.signing-key))`                | ASCII-armoured GPG private key used to sign packages.               |
+| `((gpg.signing-passphrase))`         | Passphrase for the GPG signing key.                                 |
+| `((r2.account-id))`                  | Cloudflare R2 account ID, used to build the S3-compatible endpoint. |
+| `((r2.access-key-id))`               | Cloudflare R2 access key ID.                                        |
+| `((r2.secret-access-key))`           | Cloudflare R2 secret access key.                                    |
+| `((webhooks/<secret>.url))`          | Notification endpoint URL, one credential per configured webhook.   |
+| `((repositories/<secret>.username))` | Container registry username, one credential per image `secret`.     |
+| `((repositories/<secret>.password))` | Container registry password, one credential per image `secret`.     |
 
 Each notification webhook is configured with a `secret` name (rather than a URL) and its endpoint is looked up from a
 dedicated credential at `webhooks/<secret>` with a `url` field. For example a webhook with `secret: ntfy` reads its
 endpoint from `((webhooks/ntfy.url))`. This gives every webhook its own credential — keeping endpoints (and any embedded
 tokens) out of the configuration and the generated pipelines entirely — and leaves room to add further fields to each
 webhook's credential (such as authentication) in future.
+
+Each `container` image may optionally set a `secret` name to pull the image from a private registry. When set, the pull
+credentials are looked up from a dedicated credential at `repositories/<secret>` with `username` and `password` fields —
+for example an image with `secret: docker` is pulled using `((repositories/docker.username))` and
+`((repositories/docker.password))`. When an image has no `secret`, it is pulled anonymously. The cleanup image must
+provide the AWS CLI (used for S3-compatible access to R2); `amazon/aws-cli` is a suitable choice.
 
 ### Dependency ordering between pipelines
 
@@ -107,12 +115,22 @@ container:
   build:
     image: archlinux
     tag: base-devel
+    secret: docker
   sign:
     image: archlinux
     tag: base-devel
+    secret: docker
   upload:
     image: archlinux
     tag: base-devel
+    secret: docker
+  cleanup:
+    image: amazon/aws-cli
+    tag: latest
+    secret: docker
+  notify:
+    image: curlimages/curl
+    secret: docker
 
 bucket:
   name: your-bucket-name
@@ -192,6 +210,21 @@ The configuration is validated against a [JSON Schema](schemas/aur-pipelines.jso
 mistakes (missing required fields, unknown keys, invalid `type`/`when` values, empty values) are reported with a clear
 error before any pipelines are generated. Editors that understand the `yaml-language-server` schema directive can use
 the same schema for completion and inline validation.
+
+### Container images
+
+The `container` block, and each stage within it, is optional. Any stage that is omitted (or the whole block, if left out
+entirely) falls back to a built-in default image. Each image may set an optional `secret` to pull it from a private
+registry (see [Secrets and Concourse credential management](#secrets-and-concourse-credential-management)); without a
+`secret` the image is pulled anonymously. The defaults are:
+
+| Stage     | Default image     | Default tag  | Requirements                                 |
+| --------- | ----------------- | ------------ | -------------------------------------------- |
+| `build`   | `archlinux`       | `base-devel` | `pacman`, `makepkg` (Arch base-devel).       |
+| `sign`    | `archlinux`       | `base-devel` | `gpg`.                                       |
+| `upload`  | `archlinux`       | `base-devel` | `repo-add` (pacman tools).                   |
+| `cleanup` | `amazon/aws-cli`  | `latest`     | The AWS CLI, for S3-compatible access to R2. |
+| `notify`  | `curlimages/curl` | _(untagged)_ | A POSIX shell and `curl`.                    |
 
 ### Webhook notifications
 
