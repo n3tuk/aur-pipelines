@@ -11,10 +11,25 @@ import (
 )
 
 const (
-	// pipelineURLExpr builds the Concourse build URL from the standard build
-	// metadata environment variables Concourse provides to every task.
-	pipelineURLExpr = "${ATC_EXTERNAL_URL}/teams/${BUILD_TEAM_NAME}/pipelines/" +
-		"${BUILD_PIPELINE_NAME}/jobs/${BUILD_JOB_NAME}/builds/${BUILD_NAME}"
+	// metaDir is the input directory the meta resource is fetched into; the
+	// notification task reads the build metadata files from it.
+	metaDir = "meta"
+
+	// helperFunctions defines the shell helpers used by the notification
+	// script: meta() reads a build-metadata file (empty if absent, safe under
+	// "set -u"), and build_url() composes the Concourse build URL from those
+	// files.
+	helperFunctions = `meta() {
+  cat "` + metaDir + `/$1" 2>/dev/null || true
+}
+build_url() {
+  printf '%s/teams/%s/pipelines/%s/jobs/%s/builds/%s' \
+    "$(meta atc-external-url)" \
+    "$(meta build-team-name)" \
+    "$(meta build-pipeline-name)" \
+    "$(meta build-job-name)" \
+    "$(meta build-name)"
+}`
 )
 
 // notifyStep builds a notification task step for the given webhook type
@@ -50,6 +65,7 @@ func (g *Generator) notifyStep(webhookType, when string) *pipeline.Step {
 		Config: &pipeline.TaskConfig{
 			Platform:      platformLinux,
 			ImageResource: g.image(g.config.Container.Notify),
+			Inputs:        []pipeline.Input{{Name: resourceMeta}},
 			// The notify image (curlimages/curl by default) is Alpine-based and
 			// provides sh, not bash.
 			Run: pipeline.Command{Path: "sh", Args: []string{"-c", g.notifyScriptFor(webhookType, status, matching)}},
@@ -75,6 +91,19 @@ func (g *Generator) matchingWebhooks(webhookType, when string) []config.Webhook 
 	}
 
 	return matching
+}
+
+// hasWebhooks reports whether any webhook of the given type is configured (for
+// either outcome). It is used to decide whether the build-metadata resource and
+// its get step are needed in a pipeline.
+func (g *Generator) hasWebhooks(webhookType string) bool {
+	for _, webhook := range g.config.Webhooks {
+		if webhook.Type == webhookType {
+			return true
+		}
+	}
+
+	return false
 }
 
 // statusFor maps a webhook "when" value to the human-readable status word used
@@ -117,6 +146,8 @@ func notifyScript(webhookType, status, repository string, webhooks []config.Webh
 	var builder strings.Builder
 
 	builder.WriteString("set -u\n")
+	builder.WriteString(helperFunctions)
+	builder.WriteString("\n")
 	builder.WriteString(exportBlock(webhookType, status, repository))
 
 	for index, webhook := range webhooks {
@@ -131,18 +162,25 @@ func notifyScript(webhookType, status, repository string, webhooks []config.Webh
 // notification variables available to the header values and body template. The
 // build pipelines expose the package name and version; the cleanup pipeline
 // exposes the repository name instead.
+//
+// The pipeline URL is built from the build metadata written to files by the
+// meta resource (Concourse does not expose build metadata to task environments,
+// so it is fetched via that resource and read from ./meta/*). Each read is
+// guarded so a missing file yields an empty value rather than aborting under
+// "set -u".
 func exportBlock(webhookType, status, repository string) string {
 	lines := []string{
 		`export PIPELINE_STATUS="` + status + `"`,
-		`export PIPELINE_URL="` + pipelineURLExpr + `"`,
+		`export PIPELINE_URL="$(build_url)"`,
 	}
 
 	switch webhookType {
 	case config.WebhookTypeBuild:
-		// The package name is the pipeline name; the version is derived from
-		// the built package filename staged in the build-artefacts input.
+		// The package name is the pipeline name (read from the metadata); the
+		// version is derived from the built package filename staged in the
+		// build-artefacts input.
 		lines = append(lines,
-			`export PACKAGE_NAME="${BUILD_PIPELINE_NAME}"`,
+			`export PACKAGE_NAME="$(meta build-pipeline-name)"`,
 			`export PACKAGE_VERSION="$(ls build-artefacts/*.pkg.tar.zst 2>/dev/null `+
 				`| head -n1 | sed -E 's|.*/[^-]+-([^-]+-[^-]+)-[^-]+\.pkg\.tar\.zst|\1|')"`,
 		)

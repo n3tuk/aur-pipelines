@@ -3,6 +3,7 @@ package generator
 import (
 	"fmt"
 
+	"github.com/n3tuk/aur-pipelines/internal/config"
 	"github.com/n3tuk/aur-pipelines/internal/pipeline"
 )
 
@@ -18,7 +19,7 @@ const (
 // pipelineFor builds the complete Concourse pipeline for a single package base,
 // wiring cross-pipeline triggers for each of the given dependency bases.
 func (g *Generator) pipelineFor(base string, dependencies []string) pipeline.Pipeline {
-	return pipeline.Pipeline{
+	p := pipeline.Pipeline{
 		Resources: g.resourcesFor(base),
 		Jobs: []pipeline.Job{
 			g.buildUploadJob(dependencies),
@@ -26,13 +27,22 @@ func (g *Generator) pipelineFor(base string, dependencies []string) pipeline.Pip
 			g.repositoryJob(),
 		},
 	}
+
+	// The build-metadata resource type is only needed when build notifications
+	// are configured (the notification task reads the metadata it provides).
+	if g.hasWebhooks(config.WebhookTypeBuild) {
+		p.ResourceTypes = metaResourceTypes()
+	}
+
+	return p
 }
 
 // resourcesFor builds the resources used by a package base's pipeline: the AUR
 // source repository, the build-artefacts and signatures object-storage
-// resources, and the shared repository database.
+// resources, the shared repository database, and — when build notifications are
+// configured — the build-metadata resource.
 func (g *Generator) resourcesFor(base string) []pipeline.Resource {
-	return []pipeline.Resource{
+	resources := []pipeline.Resource{
 		{
 			Name: resourceSource,
 			Type: "git",
@@ -44,6 +54,36 @@ func (g *Generator) resourcesFor(base string) []pipeline.Resource {
 		g.s3Resource(resourceArtefacts, "package-upload", fmt.Sprintf("%s/%s-.*\\.pkg\\.tar\\.zst", base, base)),
 		g.s3Resource(resourceSignatures, "cloud-lock", fmt.Sprintf("%s/%s-.*\\.pkg\\.tar\\.zst\\.sig", base, base)),
 		g.s3Resource(resourceRepository, "database", g.config.Bucket.Repository+"\\.db\\.tar\\.gz"),
+	}
+
+	if g.hasWebhooks(config.WebhookTypeBuild) {
+		resources = append(resources, metaResource())
+	}
+
+	return resources
+}
+
+// metaResourceTypes returns the resource_types block declaring the build
+// metadata resource type. It is shared by every generated pipeline that sends
+// notifications.
+func metaResourceTypes() []pipeline.ResourceType {
+	return []pipeline.ResourceType{
+		{
+			Name:   metaResourceType,
+			Type:   typeRegistryImage,
+			Source: map[string]string{sourceRepository: metaImage},
+		},
+	}
+}
+
+// metaResource returns the build-metadata resource. On get it writes the build
+// metadata (ATC external URL, team, pipeline, job, and build name) to files
+// that the notification task reads to construct the pipeline URL.
+func metaResource() pipeline.Resource {
+	return pipeline.Resource{
+		Name: resourceMeta,
+		Type: metaResourceType,
+		Icon: "information-outline",
 	}
 }
 

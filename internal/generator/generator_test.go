@@ -422,3 +422,41 @@ func TestNotifyUsesConfiguredImage(t *testing.T) {
 		}
 	}
 }
+
+func TestNotifyUsesMetadataResourceForURL(t *testing.T) {
+	t.Parallel()
+
+	result := &resolver.Result{PackageBases: []string{baseKalcBin}}
+	got := generatePipeline(t, testConfig(), result, baseKalcBin)
+
+	for _, want := range []string{
+		"repository: swce/metadata-resource", // resource type declared
+		"get: meta",                          // fetched in the job
+		"- name: meta",                       // input to the notify task
+		"build-team-name",                    // URL built from metadata files
+		`PIPELINE_URL="$(build_url)"`,        // URL sourced from metadata, not env
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected metadata wiring %q:\n%s", want, got)
+		}
+	}
+
+	// The old, broken env-var reference must not reappear.
+	if strings.Contains(got, "${BUILD_TEAM_NAME}") {
+		t.Errorf("pipeline should not reference the unset BUILD_TEAM_NAME env var:\n%s", got)
+	}
+}
+
+func TestNoWebhooksOmitsMetadataResource(t *testing.T) {
+	t.Parallel()
+
+	cfg := testConfig()
+	cfg.Webhooks = nil
+
+	result := &resolver.Result{PackageBases: []string{baseKalcBin}}
+	got := generatePipeline(t, cfg, result, baseKalcBin)
+
+	if strings.Contains(got, "swce/metadata-resource") || strings.Contains(got, "get: meta") {
+		t.Errorf("no webhooks configured, but metadata resource present:\n%s", got)
+	}
+}

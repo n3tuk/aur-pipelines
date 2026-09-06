@@ -54,6 +54,7 @@ const (
 	resourceArtefacts  = "build-artefacts"
 	resourceSignatures = "signatures"
 	resourceRepository = "repository-db"
+	resourceMeta       = "meta"
 
 	// serialGroupRepository is the serial group applied to repository jobs so
 	// that repository-database updates are serialised (within a pipeline; see
@@ -66,6 +67,13 @@ const (
 	typeRegistryImage = "registry-image"
 	// sourceRepository is the image-source key naming the image repository.
 	sourceRepository = "repository"
+
+	// metaResourceType is the name of the resource type providing build
+	// metadata, and metaImage is the image implementing it. Concourse does not
+	// expose build metadata (ATC_EXTERNAL_URL, BUILD_*) to task environments,
+	// so this resource writes it to files the notification task reads.
+	metaResourceType = "metadata"
+	metaImage        = "swce/metadata-resource"
 )
 
 // New constructs a Generator using the given configuration.

@@ -255,6 +255,14 @@ generated pipeline as written. The following variables are available:
 | `${PIPELINE_STATUS}` | `build` `cleanup` | The job outcome: `succeeded` or `failed`.                    |
 | `${PIPELINE_URL}`    | `build` `cleanup` | The URL of the Concourse build that sent the notification.   |
 
+> [!NOTE]
+>
+> Concourse does not expose build metadata (`ATC_EXTERNAL_URL`, `BUILD_*`) to task environments, so `${PIPELINE_URL}` is
+> built from a [metadata resource](https://github.com/swce/metadata-resource). When any notification is configured, the
+> generated pipeline declares a `metadata` resource type (image `swce/metadata-resource`) and fetches it in the job.
+> Your Concourse workers must be able to pull that public image; if you mirror it to a private registry, pull it through
+> a container image `secret` as described above.
+
 ## Usage
 
 Generate the pipelines for the packages listed in a configuration file:

@@ -48,5 +48,7 @@ Two JSON-Schema libraries are used deliberately and must not be conflated: `invo
 
 - Read `.kiro/steering/tasks.md` for the build/test/lint workflow, `go.md` for Go/linter conventions, and (when touching
   those areas) `schema.md` and `pipelines.md`.
+- For the reasoning behind significant design choices (RPC-primary resolver, the `((...))` credential model, notify
+  templating, pipeline topology, and so on), see [docs/DECISIONS.md](../../docs/DECISIONS.md) before changing them.
 - After any change, run `task lint` and `task test`; both must pass with zero issues before presenting work.
 - Keep documentation (README, CONTRIBUTING, and these steering files) in step with behaviour changes.

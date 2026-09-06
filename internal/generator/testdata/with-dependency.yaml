@@ -1,4 +1,9 @@
 ---
+resource_types:
+  - name: metadata
+    type: registry-image
+    source:
+      repository: swce/metadata-resource
 resources:
   - name: source
     type: git
@@ -35,6 +40,9 @@ resources:
       regexp: private\.db\.tar\.gz
       region_name: auto
       secret_access_key: ((r2.secret-access-key))
+  - name: meta
+    type: metadata
+    icon: information-outline
 jobs:
   - name: build-upload
     plan:
@@ -117,6 +125,7 @@ jobs:
           - sign
         trigger: true
       - get: repository-db
+      - get: meta
       - task: repo-add
         params:
           REPOSITORY: private
@@ -156,15 +165,28 @@ jobs:
           type: registry-image
           source:
             repository: curlimages/curl
+        inputs:
+          - name: meta
         run:
           path: sh
           args:
             - -c
             - |-
               set -u
+              meta() {
+                cat "meta/$1" 2>/dev/null || true
+              }
+              build_url() {
+                printf '%s/teams/%s/pipelines/%s/jobs/%s/builds/%s' \
+                  "$(meta atc-external-url)" \
+                  "$(meta build-team-name)" \
+                  "$(meta build-pipeline-name)" \
+                  "$(meta build-job-name)" \
+                  "$(meta build-name)"
+              }
               export PIPELINE_STATUS="succeeded"
-              export PIPELINE_URL="${ATC_EXTERNAL_URL}/teams/${BUILD_TEAM_NAME}/pipelines/${BUILD_PIPELINE_NAME}/jobs/${BUILD_JOB_NAME}/builds/${BUILD_NAME}"
-              export PACKAGE_NAME="${BUILD_PIPELINE_NAME}"
+              export PIPELINE_URL="$(build_url)"
+              export PACKAGE_NAME="$(meta build-pipeline-name)"
               export PACKAGE_VERSION="$(ls build-artefacts/*.pkg.tar.zst 2>/dev/null | head -n1 | sed -E 's|.*/[^-]+-([^-]+-[^-]+)-[^-]+\.pkg\.tar\.zst|\1|')"
               curl --fail --silent --show-error \
                 --header "Priority: low" \
@@ -181,15 +203,28 @@ jobs:
           type: registry-image
           source:
             repository: curlimages/curl
+        inputs:
+          - name: meta
         run:
           path: sh
           args:
             - -c
             - |-
               set -u
+              meta() {
+                cat "meta/$1" 2>/dev/null || true
+              }
+              build_url() {
+                printf '%s/teams/%s/pipelines/%s/jobs/%s/builds/%s' \
+                  "$(meta atc-external-url)" \
+                  "$(meta build-team-name)" \
+                  "$(meta build-pipeline-name)" \
+                  "$(meta build-job-name)" \
+                  "$(meta build-name)"
+              }
               export PIPELINE_STATUS="failed"
-              export PIPELINE_URL="${ATC_EXTERNAL_URL}/teams/${BUILD_TEAM_NAME}/pipelines/${BUILD_PIPELINE_NAME}/jobs/${BUILD_JOB_NAME}/builds/${BUILD_NAME}"
-              export PACKAGE_NAME="${BUILD_PIPELINE_NAME}"
+              export PIPELINE_URL="$(build_url)"
+              export PACKAGE_NAME="$(meta build-pipeline-name)"
               export PACKAGE_VERSION="$(ls build-artefacts/*.pkg.tar.zst 2>/dev/null | head -n1 | sed -E 's|.*/[^-]+-([^-]+-[^-]+)-[^-]+\.pkg\.tar\.zst|\1|')"
               curl --fail --silent --show-error \
                 --header "Title: ${PACKAGE_NAME} failed" \

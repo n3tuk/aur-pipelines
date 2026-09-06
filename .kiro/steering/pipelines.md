@@ -62,6 +62,13 @@ templating.
 - Template body and header values use **shell `${VAR}` expansion at run time** (NOT Concourse — Concourse only expands
   `((...))`). The notify task exports the variables and the shell expands them. Available: `${PACKAGE_NAME}`,
   `${PACKAGE_VERSION}` (build), `${REPOSITORY}` (cleanup), `${PIPELINE_STATUS}`, `${PIPELINE_URL}`.
+- `${PIPELINE_URL}` is built from build metadata, which **Concourse does not expose to task environments** (that is an
+  intentional anti-pattern per the Concourse maintainers, still true on the latest release). So the generator adds a
+  `metadata` resource type (`swce/metadata-resource`) and a `meta` resource, fetches it (`get: meta`) in each
+  notification-carrying job, and the notify task reads `meta/atc-external-url`, `meta/build-team-name`, etc. from files
+  via a `meta()`/`build_url()` shell helper. The `metadata` resource and its `get` are only added when a webhook of the
+  matching type is configured. Never revert to referencing `${BUILD_TEAM_NAME}`/`${ATC_EXTERNAL_URL}` directly — they
+  are unset in tasks and abort the script under `set -u`.
 - The notify script is **best-effort**: `set -u` only (no `-e`/`pipefail`), and each `curl` is guarded with `|| true` so
   one failing/unreachable endpoint neither aborts the others nor fails the hook. `--fail` is kept for log visibility.
 - Multiple webhooks sharing a `type`+`when` each get their own `WEBHOOK_URL_<n>` (plain `WEBHOOK_URL` when only one).

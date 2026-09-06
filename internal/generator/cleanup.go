@@ -76,47 +76,65 @@ done < "${present}"`
 // package versions from the bucket while leaving the version referenced by the
 // repository database in place.
 func (g *Generator) CleanupPipeline() Pipeline {
+	pipe := pipeline.Pipeline{
+		Resources: []pipeline.Resource{
+			{
+				Name:   resourceDaily,
+				Type:   "time",
+				Icon:   "clock-outline",
+				Source: map[string]string{"interval": cleanupInterval},
+			},
+		},
+		Jobs: []pipeline.Job{g.cleanupJob()},
+	}
+
+	// The build-metadata resource type/resource is only needed when cleanup
+	// notifications are configured (the notification task reads it).
+	if g.hasWebhooks(config.WebhookTypeCleanup) {
+		pipe.ResourceTypes = metaResourceTypes()
+		pipe.Resources = append(pipe.Resources, metaResource())
+	}
+
 	return Pipeline{
 		PackageBase: cleanupPipelineName,
-		Pipeline: pipeline.Pipeline{
-			Resources: []pipeline.Resource{
-				{
-					Name:   resourceDaily,
-					Type:   "time",
-					Icon:   "clock-outline",
-					Source: map[string]string{"interval": cleanupInterval},
-				},
-			},
-			Jobs: []pipeline.Job{g.cleanupJob()},
-		},
+		Pipeline:    pipe,
 	}
 }
 
 // cleanupJob builds the cleanup job: it is triggered daily by the time resource
 // and runs the guarded cleanup task.
 func (g *Generator) cleanupJob() pipeline.Job {
+	plan := []pipeline.Step{
+		{Get: resourceDaily, Trigger: true},
+	}
+
+	// Fetch the build metadata for the notification task when cleanup
+	// notifications are configured.
+	if g.hasWebhooks(config.WebhookTypeCleanup) {
+		plan = append(plan, pipeline.Step{Get: resourceMeta})
+	}
+
+	plan = append(plan, pipeline.Step{
+		Task: "cleanup",
+		Params: map[string]string{
+			"BUCKET":               g.config.Bucket.Name,
+			"REPOSITORY":           g.config.Bucket.Repository,
+			"R2_ENDPOINT":          r2Endpoint,
+			"R2_ACCESS_KEY_ID":     secretR2AccessKey,
+			"R2_SECRET_ACCESS_KEY": secretR2SecretKey,
+		},
+		Config: &pipeline.TaskConfig{
+			Platform:      platformLinux,
+			ImageResource: g.image(g.config.Container.Cleanup),
+			Run:           shell(cleanupScript),
+		},
+	})
+
 	return pipeline.Job{
 		Name:      jobCleanup,
 		Serial:    true,
 		OnSuccess: g.notifyStep(config.WebhookTypeCleanup, config.WebhookWhenSuccess),
 		OnFailure: g.notifyStep(config.WebhookTypeCleanup, config.WebhookWhenFailure),
-		Plan: []pipeline.Step{
-			{Get: resourceDaily, Trigger: true},
-			{
-				Task: "cleanup",
-				Params: map[string]string{
-					"BUCKET":               g.config.Bucket.Name,
-					"REPOSITORY":           g.config.Bucket.Repository,
-					"R2_ENDPOINT":          r2Endpoint,
-					"R2_ACCESS_KEY_ID":     secretR2AccessKey,
-					"R2_SECRET_ACCESS_KEY": secretR2SecretKey,
-				},
-				Config: &pipeline.TaskConfig{
-					Platform:      platformLinux,
-					ImageResource: g.image(g.config.Container.Cleanup),
-					Run:           shell(cleanupScript),
-				},
-			},
-		},
+		Plan:      plan,
 	}
 }

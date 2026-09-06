@@ -115,35 +115,46 @@ func (g *Generator) signJob() pipeline.Job {
 // and republishes it. It is the serial job: repository-database updates must be
 // performed sequentially so concurrent runs cannot clobber each other.
 func (g *Generator) repositoryJob() pipeline.Job {
+	plan := []pipeline.Step{
+		{Get: resourceArtefacts, Passed: []string{jobBuildUpload}},
+		{Get: resourceSignatures, Trigger: true, Passed: []string{jobSign}},
+		{Get: resourceRepository},
+	}
+
+	// The notification tasks read build metadata from the meta resource, so it
+	// must be fetched in the job when notifications are configured.
+	if g.hasWebhooks(config.WebhookTypeBuild) {
+		plan = append(plan, pipeline.Step{Get: resourceMeta})
+	}
+
+	plan = append(plan,
+		pipeline.Step{
+			Task: "repo-add",
+			Params: map[string]string{
+				"REPOSITORY": g.config.Bucket.Repository,
+			},
+			Config: &pipeline.TaskConfig{
+				Platform:      platformLinux,
+				ImageResource: g.image(g.config.Container.Upload),
+				Inputs: []pipeline.Input{
+					{Name: resourceArtefacts},
+					{Name: resourceSignatures},
+					{Name: resourceRepository},
+				},
+				Outputs: []pipeline.Output{{Name: resourceRepository}},
+				Run:     shell(repositoryScript),
+			},
+		},
+		pipeline.Step{Put: resourceRepository},
+	)
+
 	return pipeline.Job{
 		Name:         jobRepository,
 		Serial:       true,
 		SerialGroups: []string{serialGroupRepository},
 		OnSuccess:    g.notifyStep(config.WebhookTypeBuild, config.WebhookWhenSuccess),
 		OnFailure:    g.notifyStep(config.WebhookTypeBuild, config.WebhookWhenFailure),
-		Plan: []pipeline.Step{
-			{Get: resourceArtefacts, Passed: []string{jobBuildUpload}},
-			{Get: resourceSignatures, Trigger: true, Passed: []string{jobSign}},
-			{Get: resourceRepository},
-			{
-				Task: "repo-add",
-				Params: map[string]string{
-					"REPOSITORY": g.config.Bucket.Repository,
-				},
-				Config: &pipeline.TaskConfig{
-					Platform:      platformLinux,
-					ImageResource: g.image(g.config.Container.Upload),
-					Inputs: []pipeline.Input{
-						{Name: resourceArtefacts},
-						{Name: resourceSignatures},
-						{Name: resourceRepository},
-					},
-					Outputs: []pipeline.Output{{Name: resourceRepository}},
-					Run:     shell(repositoryScript),
-				},
-			},
-			{Put: resourceRepository},
-		},
+		Plan:         plan,
 	}
 }
 

@@ -1,16 +1,25 @@
 ---
+resource_types:
+  - name: metadata
+    type: registry-image
+    source:
+      repository: swce/metadata-resource
 resources:
   - name: daily
     type: time
     icon: clock-outline
     source:
       interval: 24h
+  - name: meta
+    type: metadata
+    icon: information-outline
 jobs:
   - name: cleanup-repository
     serial: true
     plan:
       - get: daily
         trigger: true
+      - get: meta
       - task: cleanup
         params:
           BUCKET: my-bucket
@@ -86,14 +95,27 @@ jobs:
           type: registry-image
           source:
             repository: curlimages/curl
+        inputs:
+          - name: meta
         run:
           path: sh
           args:
             - -c
             - |-
               set -u
+              meta() {
+                cat "meta/$1" 2>/dev/null || true
+              }
+              build_url() {
+                printf '%s/teams/%s/pipelines/%s/jobs/%s/builds/%s' \
+                  "$(meta atc-external-url)" \
+                  "$(meta build-team-name)" \
+                  "$(meta build-pipeline-name)" \
+                  "$(meta build-job-name)" \
+                  "$(meta build-name)"
+              }
               export PIPELINE_STATUS="failed"
-              export PIPELINE_URL="${ATC_EXTERNAL_URL}/teams/${BUILD_TEAM_NAME}/pipelines/${BUILD_PIPELINE_NAME}/jobs/${BUILD_JOB_NAME}/builds/${BUILD_NAME}"
+              export PIPELINE_URL="$(build_url)"
               export REPOSITORY="private"
               curl --fail --silent --show-error \
                 --header "Title: Cleanup of ${REPOSITORY} failed" \
