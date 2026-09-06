@@ -12,6 +12,7 @@ This file is a concise pointer; the authoritative, detailed guidance is maintain
   (Concourse generation model and secret conventions).
 - **Kiro skills** (`.kiro/skills/`): `adding-config-field` — the end-to-end procedure for changing a config field.
 - **GitHub Copilot** (`.github/copilot-instructions.md`): change and pull-request-review guidance.
+- **Design rationale** ([docs/DECISIONS.md](docs/DECISIONS.md)): the _why_ behind the significant design decisions.
 - **Contributors** ([CONTRIBUTING.md](CONTRIBUTING.md)): human-facing development setup and workflow.
 
 ## Essentials
