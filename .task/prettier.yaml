@@ -31,11 +31,16 @@ tasks:
       - "{{ .ROOT_DIR }}/.gitignore"
       # Ignore the CodeQL cache
       - exclude: .codeql/**
+      # Ignore local temporary directories and test data
+      - exclude: dist/**
+      - exclude: pipelines/**
+      - exclude: internal/**/testdata/**
     vars:
       files:
         sh: |-
           ( find . -type f \
-              -not -path './.codeql/*' \
+              -not \( -path './.codeql/*' -or -path './dist/*' -or \
+                      -path './pipelines/*' -or -path './internal/*/testdata/*' \) \
               -and \( -iname '*.md' -or -iname '*.yml' -or -iname '*.yaml' -or -iname '*.json' -or -iname '.snyk' \) \
               -print 2>/dev/null \
             | sed 's|^\./||' | paste -sd' ' - ) || echo 'README.md'
@@ -43,15 +48,13 @@ tasks:
     deps:
       - task: check:exec:prettier
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
-      - cmd: prettier --log-level log --write --cache --cache-location .prettiercache {{ .files }}
-      - cmd: echo -e '\e[0;32mPassed\e[0m'
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
+      - cmd: prettier --log-level warn --write --cache --cache-location .prettiercache {{ .files }}
 
   prettier:clean:
     desc: Clean the Prettier cache
     silent: true
     run: once
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - cmd: rm -f .prettiercache
-      - cmd: echo -e '\e[0;32mPassed\e[0m'

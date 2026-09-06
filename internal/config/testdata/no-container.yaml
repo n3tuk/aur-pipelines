@@ -1,0 +1,7 @@
+---
+bucket:
+  name: your-bucket-name
+  repository: private
+
+packages:
+  - name: kalc-bin

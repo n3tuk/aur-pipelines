@@ -16,6 +16,5 @@ tasks:
     deps:
       - task: check:exec:snyk
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;33mSkipped\e[0m'{{ end }}"
       - cmd: echo "Snyk is not yet configured; skipping."
-      - cmd: echo -e '\e[0;33mSkipped\e[0m'

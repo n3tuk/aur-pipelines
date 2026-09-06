@@ -1,0 +1,232 @@
+---
+resource_types:
+  - name: metadata
+    type: registry-image
+    source:
+      repository: swce/metadata-resource
+resources:
+  - name: source
+    type: git
+    icon: git
+    source:
+      uri: https://aur.archlinux.org/app.git
+  - name: build-artefacts
+    type: s3
+    icon: package-upload
+    source:
+      access_key_id: ((r2.access-key-id))
+      bucket: my-bucket
+      endpoint: https://((r2.account-id)).r2.cloudflarestorage.com
+      regexp: app/app-.*\.pkg\.tar\.zst
+      region_name: auto
+      secret_access_key: ((r2.secret-access-key))
+  - name: signatures
+    type: s3
+    icon: cloud-lock
+    source:
+      access_key_id: ((r2.access-key-id))
+      bucket: my-bucket
+      endpoint: https://((r2.account-id)).r2.cloudflarestorage.com
+      regexp: app/app-.*\.pkg\.tar\.zst\.sig
+      region_name: auto
+      secret_access_key: ((r2.secret-access-key))
+  - name: repository-db
+    type: s3
+    icon: database
+    source:
+      access_key_id: ((r2.access-key-id))
+      bucket: my-bucket
+      endpoint: https://((r2.account-id)).r2.cloudflarestorage.com
+      regexp: private\.db\.tar\.gz
+      region_name: auto
+      secret_access_key: ((r2.secret-access-key))
+  - name: meta
+    type: metadata
+    icon: information-outline
+jobs:
+  - name: build-upload
+    plan:
+      - get: source
+        trigger: true
+      - get: repository-db
+        trigger: true
+      - task: build
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: archlinux
+              tag: base-devel
+          inputs:
+            - name: source
+          outputs:
+            - name: build-artefacts
+          run:
+            path: bash
+            args:
+              - -c
+              - |-
+                set -euo pipefail
+                pacman-key --init
+                pacman-key --populate archlinux
+                pacman -Syu --noconfirm
+                useradd -m builder
+                cp -r source /home/builder/source
+                chown -R builder:builder /home/builder/source
+                sudo -u builder bash -c 'cd /home/builder/source && makepkg --syncdeps --noconfirm --skippgpcheck'
+                cp /home/builder/source/*.pkg.tar.zst build-artefacts/
+      - put: build-artefacts
+  - name: sign
+    plan:
+      - get: build-artefacts
+        passed:
+          - build-upload
+        trigger: true
+      - task: sign
+        params:
+          GPG_PASSPHRASE: ((gpg.signing-passphrase))
+          GPG_PRIVATE_KEY: ((gpg.signing-key))
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: archlinux
+              tag: base-devel
+          inputs:
+            - name: build-artefacts
+          outputs:
+            - name: signatures
+          run:
+            path: bash
+            args:
+              - -c
+              - |-
+                set -euo pipefail
+                echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
+                for package in build-artefacts/*.pkg.tar.zst; do
+                  echo "${GPG_PASSPHRASE}" \
+                    | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+                        --detach-sign --armor \
+                        --output "signatures/$(basename "${package}").sig" "${package}"
+                done
+      - put: signatures
+  - name: repository
+    serial: true
+    serial_groups:
+      - repository
+    plan:
+      - get: build-artefacts
+        passed:
+          - build-upload
+      - get: signatures
+        passed:
+          - sign
+        trigger: true
+      - get: repository-db
+      - get: meta
+      - task: repo-add
+        params:
+          REPOSITORY: private
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: archlinux
+              tag: base-devel
+          inputs:
+            - name: build-artefacts
+            - name: signatures
+            - name: repository-db
+          outputs:
+            - name: repository-db
+          run:
+            path: bash
+            args:
+              - -c
+              - |-
+                set -euo pipefail
+                cp build-artefacts/*.pkg.tar.zst repository-db/
+                cp signatures/*.sig repository-db/ 2>/dev/null || true
+                cd repository-db
+                repo-add "${REPOSITORY}.db.tar.gz" ./*.pkg.tar.zst
+                cp -f "${REPOSITORY}.db.tar.gz" "${REPOSITORY}.db"
+                cp -f "${REPOSITORY}.files.tar.gz" "${REPOSITORY}.files"
+      - put: repository-db
+    on_success:
+      task: notify-succeeded
+      params:
+        WEBHOOK_URL: ((webhooks/ntfy.url))
+      config:
+        platform: linux
+        image_resource:
+          type: registry-image
+          source:
+            repository: curlimages/curl
+        inputs:
+          - name: meta
+        run:
+          path: sh
+          args:
+            - -c
+            - |-
+              set -u
+              meta() {
+                cat "meta/$1" 2>/dev/null || true
+              }
+              build_url() {
+                printf '%s/teams/%s/pipelines/%s/jobs/%s/builds/%s' \
+                  "$(meta atc-external-url)" \
+                  "$(meta build-team-name)" \
+                  "$(meta build-pipeline-name)" \
+                  "$(meta build-job-name)" \
+                  "$(meta build-name)"
+              }
+              export PIPELINE_STATUS="succeeded"
+              export PIPELINE_URL="$(build_url)"
+              export PACKAGE_NAME="$(meta build-pipeline-name)"
+              export PACKAGE_VERSION="$(ls build-artefacts/*.pkg.tar.zst 2>/dev/null | head -n1 | sed -E 's|.*/[^-]+-([^-]+-[^-]+)-[^-]+\.pkg\.tar\.zst|\1|')"
+              curl --fail --silent --show-error \
+                --header "Priority: low" \
+                --header "Title: ${PACKAGE_NAME} built" \
+                --data "Package ${PACKAGE_NAME} v${PACKAGE_VERSION} built. See ${PIPELINE_URL}." \
+                "${WEBHOOK_URL}" || true
+    on_failure:
+      task: notify-failed
+      params:
+        WEBHOOK_URL: ((webhooks/ntfy.url))
+      config:
+        platform: linux
+        image_resource:
+          type: registry-image
+          source:
+            repository: curlimages/curl
+        inputs:
+          - name: meta
+        run:
+          path: sh
+          args:
+            - -c
+            - |-
+              set -u
+              meta() {
+                cat "meta/$1" 2>/dev/null || true
+              }
+              build_url() {
+                printf '%s/teams/%s/pipelines/%s/jobs/%s/builds/%s' \
+                  "$(meta atc-external-url)" \
+                  "$(meta build-team-name)" \
+                  "$(meta build-pipeline-name)" \
+                  "$(meta build-job-name)" \
+                  "$(meta build-name)"
+              }
+              export PIPELINE_STATUS="failed"
+              export PIPELINE_URL="$(build_url)"
+              export PACKAGE_NAME="$(meta build-pipeline-name)"
+              export PACKAGE_VERSION="$(ls build-artefacts/*.pkg.tar.zst 2>/dev/null | head -n1 | sed -E 's|.*/[^-]+-([^-]+-[^-]+)-[^-]+\.pkg\.tar\.zst|\1|')"
+              curl --fail --silent --show-error \
+                --header "Title: ${PACKAGE_NAME} failed" \
+                --data "Package ${PACKAGE_NAME} failed. See ${PIPELINE_URL}." \
+                "${WEBHOOK_URL}" || true

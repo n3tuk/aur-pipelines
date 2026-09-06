@@ -1,0 +1,15 @@
+---
+container:
+  build:
+    image: my-registry/arch
+    tag: custom
+  notify:
+    image: my-registry/curl
+    tag: v1
+
+bucket:
+  name: your-bucket-name
+  repository: private
+
+packages:
+  - name: kalc-bin
