@@ -46,7 +46,7 @@ repos:
 
   # Linting
   - repo: https://github.com/igorshubovych/markdownlint-cli.git
-    rev: v0.48.0
+    rev: v0.49.1
     hooks:
       - id: markdownlint
         name: Check general Markdown correctness and formatting
