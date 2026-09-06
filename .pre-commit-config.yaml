@@ -67,7 +67,7 @@ repos:
 
   # Schema Validation
   - repo: https://github.com/python-jsonschema/check-jsonschema.git
-    rev: 0.37.1
+    rev: 0.38.0
     hooks:
       - name: Check the Taskfiles for correctness
         id: check-taskfile
