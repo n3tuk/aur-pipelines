@@ -12,10 +12,9 @@ tasks:
       unpinned dependencies.
     silent: true
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - task: zizmor:workflows
       - task: zizmor:dependabot
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
 
   zizmor:workflows:
     desc: Analyse the GitHub Workflows with zizmor
@@ -29,10 +28,9 @@ tasks:
     deps:
       - task: check:exec:zizmor
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
       - if: find .github/workflows -type f -name '*.yaml' >dev/null 2>&1
         cmd: zizmor --persona auditor --no-progress --format plain .github/workflows/*.yaml
-      - cmd: echo -e '\e[0;32mPassed\e[0m'
 
   zizmor:dependabot:
     desc: Analyse the GitHub Dependabot configuration with zizmor
@@ -46,7 +44,6 @@ tasks:
     deps:
       - task: check:exec:zizmor
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
       - if: test -f .github/dependabot.yaml
         cmd: zizmor --persona auditor --no-progress --format plain .github/dependabot.yaml
-      - cmd: echo -e '\e[0;32mPassed\e[0m'
