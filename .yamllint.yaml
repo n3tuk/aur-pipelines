@@ -3,6 +3,12 @@
 
 extends: default
 
+ignore: |-
+  internal/**/testdata
+  pipelines
+  .codeql
+  dist
+
 rules:
   document-start:
     present: true
