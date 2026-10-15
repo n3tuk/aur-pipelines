@@ -7,6 +7,7 @@ linters:
   default: all
   disable:
     - exhaustruct
+    - exhaustruct_v5
     - gomodguard
     - mnd
     - tagliatelle
@@ -32,6 +33,7 @@ linters:
             - github.com/go-git/go-billy/v5
             - github.com/spf13/viper
             - github.com/santhosh-tekuri/jsonschema/v6
+            - go.yaml.in/yaml/v3
         cmd:
           files:
             - "**/cmd/**/*.go"
@@ -41,6 +43,14 @@ linters:
             - github.com/n3tuk/aur-pipelines
             - github.com/spf13/cobra
             - github.com/spf13/viper
+        tools:
+          files:
+            - "**/tools/**/*.go"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/n3tuk/aur-pipelines
+            - github.com/invopop/jsonschema
     godox:
       keywords:
         - WARN
