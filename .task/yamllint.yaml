@@ -20,18 +20,23 @@ tasks:
       - "{{ .ROOT_DIR }}/.yamllint.yaml"
       # Ignore the CodeQL cache
       - exclude: .codeql/**
+      # Ignore local temporary directories and test data
+      - exclude: dist/**
+      - exclude: pipelines/**
+      - exclude: internal/**/testdata/**
     vars:
       files:
         sh: |-
           ( find . -type f \
-              -not -path './.codeql/*' -and \( -iname '*.yml' -or -iname '*.yaml' \) -print 2>/dev/null \
+              -not \( -path './.codeql/*' -or -path './dist/*' -or \
+                      -path './pipelines/*' -or -path './internal/*/testdata/*' \) \
+              -and \( -iname '*.yml' -or -iname '*.yaml' \) -print 2>/dev/null \
             | sed 's|^\./||' | paste -sd' ' - ) || true
     deps:
       - task: check:exec:yamllint
       - task: prettier
     silent: true
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
       - if: '{{ ne .files "" }}'
         cmd: yamllint --config-file .yamllint.yaml {{ .files }}
-      - cmd: echo -e '\e[0;32mPassed\e[0m'

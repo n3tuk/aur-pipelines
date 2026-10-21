@@ -27,7 +27,6 @@ tasks:
       - task: check:exec:markdownlint
       - task: prettier
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{end}}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mPassed\e[0m'{{ end }}"
       - if: '{{ ne .files "" }}'
         cmd: markdownlint --config .markdownlint.yaml --ignore-path .markdownignore {{ .files }}
-      - cmd: echo -e '\e[0;32mPassed\e[0m'
