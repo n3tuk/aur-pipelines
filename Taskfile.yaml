@@ -31,6 +31,9 @@ includes:
   go:
     taskfile: .task/go.yaml
     flatten: true
+  codeql:
+    taskfile: .task/codeql.yaml
+    flatten: true
   snyk:
     taskfile: .task/snyk.yaml
     flatten: true
@@ -76,12 +79,11 @@ tasks:
       - task: pre-commit:install
       - task: go:healthcheck
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - task: lint
       - task: test
       - task: build
       - task: analyse
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
 
   lint:
     desc: Check linting of Go, JSON, YAML, and Markdown files
@@ -90,12 +92,11 @@ tasks:
       the code.
     silent: true
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - task: go:lint
       - task: prettier
       - task: markdownlint
       - task: yamllint
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
 
   test:
     desc: Run the unit tests
@@ -103,9 +104,8 @@ tasks:
       Run the unit and integration tests for the Go application.
     silent: true
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - task: go:test
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
 
   analyse:
     desc: Run static code analysis and security analysis tools
@@ -114,13 +114,12 @@ tasks:
       configuration files, to identify any potential code issues or security weaknesses within the code.
     silent: true
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - task: check-jsonschema
       - task: actionlint
       - task: zizmor
       - task: snyk
-      - task: go:codeql
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+      - task: codeql
 
   build:
     desc: Locally build the application
@@ -129,9 +128,8 @@ tasks:
       version number based on the local commit and file contents, as well as the Helm Chart for deployment.
     silent: true
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - task: go:build
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
 
   clean:
     desc: Clean temporary directories and files from this function
@@ -141,8 +139,9 @@ tasks:
     run: once
     silent: true
     cmds:
-      - defer: "{{ if .EXIT_CODE }}echo -e '\e[1;31mFailed\e[0m'{{ end }}"
+      - defer: "echo -e {{ if .EXIT_CODE }}'\e[1;31mFailed\e[0m'{{ else }}'\e[0;32mCompleted\e[0m'{{ end }}"
       - task: go:clean
+      - task: codeql:clean
       - task: prettier:clean
       - cmd: rm -rf .task/checksum
-      - cmd: echo -e '\e[0;32mCompleted\e[0m'
+      - cmd: rm -rf pipelines/*
