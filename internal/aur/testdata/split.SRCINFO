@@ -1,0 +1,21 @@
+pkgbase = example-suite
+	pkgver = 2.0.0
+	pkgrel = 1
+	epoch = 1
+	arch = x86_64
+	arch = aarch64
+	makedepends = cmake
+	makedepends = ninja
+	depends = glibc
+
+pkgname = example-cli
+	depends = glibc
+	depends = libcurl>=8.0
+	depends_x86_64 = intel-oneapi-mkl
+	provides = example
+
+pkgname = example-lib
+	depends = glibc
+	checkdepends = gtest=1.14.0
+	provides = libexample.so
+	optdepends = example-docs: offline documentation

@@ -1,0 +1,20 @@
+---
+container:
+  build:
+    image: archlinux
+    tag: base-devel
+  sign:
+    image: archlinux
+    tag: base-devel
+  upload:
+    image: archlinux
+    tag: base-devel
+  cleanup:
+    image: amazon/aws-cli
+    tag: latest
+
+bucket:
+  name: your-bucket-name
+  repository: private
+
+packages: []

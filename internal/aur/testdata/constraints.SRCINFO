@@ -1,0 +1,14 @@
+# A comment line that should be ignored.
+pkgbase = constraint-demo
+	pkgver = 3.2.1
+	pkgrel = 4
+	depends = foo>=1.2
+	depends = bar=1.0
+	depends = baz<3
+	depends = qux>1
+	depends = plain
+	makedepends = build-tool<=2.5
+	provides = virtual=1.0
+	provides = another
+
+pkgname = constraint-demo

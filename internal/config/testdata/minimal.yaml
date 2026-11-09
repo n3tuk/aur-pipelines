@@ -1,0 +1,21 @@
+---
+container:
+  build:
+    image: archlinux
+    tag: base-devel
+  sign:
+    image: archlinux
+    tag: base-devel
+  upload:
+    image: archlinux
+    tag: base-devel
+  cleanup:
+    image: amazon/aws-cli
+    tag: latest
+
+bucket:
+  name: minimal-bucket
+  repository: private
+
+packages:
+  - name: kalc-bin

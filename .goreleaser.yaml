@@ -24,7 +24,7 @@ checksum:
 
 builds:
   - id: aur-pipelines
-    main: ./cmd/aur-pipelines/main.go
+    main: ./cmd/aur-pipelines
     binary: aur-pipelines
     mod_timestamp: "{{ .CommitTimestamp }}"
     env:

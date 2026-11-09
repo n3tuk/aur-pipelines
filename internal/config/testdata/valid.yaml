@@ -1,0 +1,49 @@
+---
+container:
+  build:
+    image: archlinux
+    tag: base-devel
+  sign:
+    image: archlinux
+    tag: base-devel
+  upload:
+    image: archlinux
+    tag: base-devel
+  cleanup:
+    image: amazon/aws-cli
+    tag: latest
+
+bucket:
+  name: your-bucket-name
+  repository: private
+
+webhook:
+  - name: ntfy-success
+    type: build
+    when: on_success
+    secret: ntfy
+    headers:
+      - name: Title
+        value: ${PACKAGE_NAME} v${PACKAGE_VERSION} Built
+      - name: Priority
+        value: low
+      - name: Tags
+        value: aur, concourse, ${PACKAGE_NAME}, ${PACKAGE_VERSION}
+    template: >-
+      Package ${PACKAGE_NAME} v${PACKAGE_VERSION} has been successfully built and uploaded to the repository.
+  - name: ntfy-failure
+    type: build
+    when: on_failure
+    secret: ntfy
+    headers:
+      - name: Title
+        value: ${PACKAGE_NAME} v${PACKAGE_VERSION} Build Failure
+      - name: Priority
+        value: high
+    template: >-
+      Package ${PACKAGE_NAME} v${PACKAGE_VERSION} failed to build. See ${PIPELINE_URL} for details.
+
+packages:
+  - name: kalc-bin
+  - name: ntfysh-bin
+  - name: keybase-bin
