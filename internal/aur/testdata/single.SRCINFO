@@ -1,0 +1,14 @@
+pkgbase = kalc-bin
+	pkgdesc = A calculator with everything you need
+	pkgver = 1.5.1
+	pkgrel = 2
+	url = https://github.com/bugreport0/kalc
+	arch = x86_64
+	license = MIT
+	depends = glibc
+	depends = libgcc>=13.0
+	makedepends = cargo
+	provides = kalc
+	conflicts = kalc
+
+pkgname = kalc-bin
